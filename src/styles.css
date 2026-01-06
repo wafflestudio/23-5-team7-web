@@ -1,0 +1,272 @@
+/* Minimal, framework-free styles for the Toto main page */
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  color: #0f172a;
+  background: #fafafa;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.page-title {
+  margin: 0;
+  font-size: 28px;
+}
+.page-sub {
+  margin-top: 8px;
+  color: #6b7280;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.card-title {
+  margin: 0;
+  font-size: 20px;
+}
+.status-badge {
+  color: white;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+}
+.card-desc {
+  margin: 12px 0 8px;
+  color: #334155;
+}
+
+.card-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.meta-item {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.meta-label {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+.meta-value {
+  font-size: 14px;
+  color: #0f172a;
+}
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+/* Progress section */
+.progress-section {
+  margin-top: 12px;
+}
+.progress-label {
+  color: #64748b;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.progress-container {
+  position: relative;
+}
+.progress-track {
+  height: 14px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #4f8df3 0%, #3b82f6 50%, #2563eb 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), inset 0 -1px 1px
+    rgba(0, 0, 0, 0.08);
+  transition: width 0.4s ease;
+}
+
+/* Tooltip */
+.progress-container .progress-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: #0f172a;
+  color: white;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+.progress-container:hover .progress-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+.progress-container .progress-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 12px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: #0f172a transparent transparent transparent;
+}
+
+/* Footer & Event ID */
+.card-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.event-id {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+@media (min-width: 640px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+.modal {
+  background: white;
+  width: 100%;
+  max-width: 520px;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  border: 1px solid #e5e7eb;
+}
+.modal-header {
+  padding: 16px 16px 8px;
+  border-bottom: 1px solid #eef2f7;
+}
+.modal-body {
+  padding: 16px;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+/* Form */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.inline-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+label {
+  font-size: 12px;
+  color: #64748b;
+}
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  outline: none;
+  background: #f8fafc;
+}
+.input:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.35);
+  background: white;
+}
+.form-error {
+  color: #ef4444;
+  font-size: 12px;
+}
+.form-info {
+  color: #16a34a;
+  font-size: 12px;
+}
+
+/* Buttons */
+.button {
+  appearance: none;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  color: #0f172a;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.button:hover {
+  background: #f1f5f9;
+}
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.button.primary {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: white;
+}
+.button.primary:hover {
+  background: #1d4ed8;
+}
+.button.ghost {
+  background: transparent;
+}
