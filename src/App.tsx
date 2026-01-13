@@ -1,103 +1,126 @@
-import { useMemo, useState } from 'react';
-import EventCard from './components/EventCard';
-import LoginModal from './components/LoginModal';
-import SignupModal from './components/SignupModal';
-import type { TotoEvent } from './types';
-import type { LoginResponse, SignupResponse } from './types';
+import { useState, useEffect } from "react";
+import Modal from "./components/Modal";
+import LoginModal from "./components/LoginModal";
+import SignupModal from "./components/SignupModal";
+import EmailVerifyModal from "./components/EmailVerifyModal";
+import type { User } from "./types";
 
-const App = () => {
-  const mockEvent: TotoEvent = useMemo(
-    () => ({
-      event_id: '11111111-1111-1111-1111-111111111111',
-      creator_id: '22222222-2222-2222-2222-222222222222',
-      title: '2025 프로 축구 결승전: 블루 vs 레드',
-      description:
-        '올해 최고의 빅매치! 승자는 누구? 다양한 특집 이벤트와 함께 즐겨보세요.',
-      status: 'OPEN',
-      // close_time: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(), // +24h
-      // created_at: new Date().toISOString(),
-      close_time: '2026-01-17T23:59:59Z',
-      created_at: '2026-01-01T00:00:00Z',
-    }),
-    []
-  );
+export default function App() {
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const [needVerify, setNeedVerify] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [showMypage, setShowMypage] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    const userStr = localStorage.getItem("user");
+    if (token && userStr) {
+      setIsLoggedIn(true);
+      setUser(JSON.parse(userStr));
+    }
+  }, []);
+
+  const handleLoginSuccess = (loggedInUser: User) => {
+    setIsLoggedIn(true);
+    setUser(loggedInUser);
+    localStorage.setItem("user", JSON.stringify(loggedInUser));
+    setShowLogin(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user");
+    setIsLoggedIn(false);
+    setUser(null);
+    setShowMypage(false);
+  };
 
   return (
-    <div className="container">
-      <header style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
-        <div style={{ flex: 1 }}>
-          <h1 className="page-title">토토 메인</h1>
-          <p className="page-sub">
-            현재는 임의로 하나의 토토만 표시 (API 연동 전 단계)
-          </p>
+    <>
+      {/* 헤더 */}
+      <header style={styles.header}>
+        <div style={styles.logo} onClick={() => setShowMypage(false)}>스누토토</div>
+        <div style={styles.authButtons}>
+          {isLoggedIn && user ? (
+            <>
+              <span style={styles.mypage} onClick={() => setShowMypage(true)}>{user.nickname}님 mypage</span>
+              <button onClick={handleLogout}>로그아웃</button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setShowLogin(true)}>로그인</button>
+              <button onClick={() => setShowSignup(true)}>회원가입</button>
+            </>
+          )}
         </div>
-        <AuthButtons />
       </header>
 
-      <section className="grid" style={{ marginTop: 16 }}>
-        <EventCard event={mockEvent} />
-      </section>
-    </div>
-  );
-};
+      {/* 메인 콘텐츠 */}
+      <main style={styles.main}>
+        {showMypage ? (
+          <div>
+            <h1>마이페이지</h1>
+            <p>여기에 사용자 정보를 표시합니다.</p>
+          </div>
+        ) : (
+          <h1>스누토토에 오신 것을 환영합니다</h1>
+        )}
+      </main>
 
-export default App;
-
-// --- Auth state and buttons ---
-const AuthButtons = () => {
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [signupOpen, setSignupOpen] = useState(false);
-  const [userSummary, setUserSummary] = useState<
-    LoginResponse['user'] | SignupResponse | null
-  >(null);
-
-  const loggedIn = Boolean(localStorage.getItem('access_token'));
-
-  const onLoggedIn = (res: LoginResponse) => {
-    setUserSummary(res.user);
-  };
-  const onSignedUp = (user: SignupResponse) => {
-    setUserSummary(user);
-  };
-  const logout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    setUserSummary(null);
-  };
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      {loggedIn || userSummary ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="page-sub">
-            사용자: {userSummary?.user_id ?? '—'} • 포인트:{' '}
-            {userSummary?.points ?? '—'}
-          </span>
-          <button className="button" onClick={logout}>
-            로그아웃
-          </button>
-        </div>
-      ) : (
-        <>
-          <button className="button" onClick={() => setSignupOpen(true)}>
-            회원가입
-          </button>
-          <button className="button primary" onClick={() => setLoginOpen(true)}>
-            로그인
-          </button>
-        </>
+      {/* 모달 영역 */}
+      {showLogin && (
+        <Modal onClose={() => setShowLogin(false)}>
+          <LoginModal
+            onNeedVerify={() => {
+              setShowLogin(false);
+              setNeedVerify(true);
+            }}
+            onLoginSuccess={handleLoginSuccess}
+          />
+        </Modal>
       )}
 
-      <LoginModal
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        onLoggedIn={onLoggedIn}
-      />
-      <SignupModal
-        open={signupOpen}
-        onClose={() => setSignupOpen(false)}
-        onSignedUp={onSignedUp}
-      />
-    </div>
+      {showSignup && (
+        <Modal onClose={() => setShowSignup(false)}>
+          <SignupModal />
+        </Modal>
+      )}
+
+      {needVerify && (
+        <Modal onClose={() => setNeedVerify(false)}>
+          <EmailVerifyModal />
+        </Modal>
+      )}
+    </>
   );
+}
+
+const styles = {
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "12px 24px",
+    borderBottom: "1px solid #ddd",
+  },
+  logo: {
+    fontSize: "20px",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+  authButtons: {
+    display: "flex",
+    gap: "8px",
+    alignItems: "center",
+  },
+  mypage: {
+    cursor: "pointer",
+    color: "blue",
+    textDecoration: "underline",
+  },
+  main: {
+    padding: "40px",
+  },
 };

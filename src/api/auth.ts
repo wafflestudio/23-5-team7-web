@@ -1,42 +1,40 @@
-import type {
-  LoginRequest,
-  LoginResponse,
-  SendVerificationCodeRequest,
-  SendVerificationCodeResponse,
-  SignupRequest,
-  SignupResponse,
-  VerifyCodeRequest,
-  VerifyCodeResponse,
-} from '../types';
-import { request } from './client';
+import client from "./client";
+import { LoginRequest, SignupRequest } from "../types";
 
-export function sendVerificationCode(payload: SendVerificationCodeRequest) {
-  return request<SendVerificationCodeResponse>(
-    '/api/users/send-verification-code',
+/* 일반 회원가입 */
+export const signup = (data: SignupRequest) =>
+  client.post("/api/users", data);
+
+/* 일반 로그인 */
+export const login = (data: LoginRequest) =>
+  client.post("/api/auth/login", data);
+
+/* 인증메일 발송 */
+export const sendVerificationMail = () =>
+  client.post(
+    "/api/auth/verify-email/send",
+    {},
     {
-      method: 'POST',
-      body: JSON.stringify(payload),
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("verification_token")}`,
+      },
     }
   );
-}
 
-export function verifyCode(payload: VerifyCodeRequest) {
-  return request<VerifyCodeResponse>('/api/users/verify-code', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
+/* 인증코드 확인 */
+export const confirmVerificationCode = (code: string) =>
+  client.post(
+    "/api/auth/verify-email/confirm",
+    { code },
+    {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("verification_token")}`,
+      },
+    }
+  );
 
-export function signup(payload: SignupRequest) {
-  return request<SignupResponse>('/api/users', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
-export function login(payload: LoginRequest) {
-  return request<LoginResponse>('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
+/* 구글 로그인 */
+export const googleLogin = () => {
+  window.location.href =
+    import.meta.env.VITE_API_BASE_URL + "/api/auth/google/login";
+};

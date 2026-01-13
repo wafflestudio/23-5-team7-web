@@ -1,34 +1,15 @@
-const BASE_URL = ''; // Use relative paths; configure proxy in vite if needed
+import axios from "axios";
 
-class ApiError extends Error {
-  status: number;
-  body?: unknown;
-  constructor(message: string, status: number, body?: unknown) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.body = body;
+const client = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+});
+
+client.interceptors.request.use((config) => {
+  const token = localStorage.getItem("access_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-}
+  return config;
+});
 
-export async function request<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers ?? {}),
-    },
-    ...options,
-  });
-
-  const isJson = (res.headers.get('content-type') ?? '').includes(
-    'application/json'
-  );
-  const body = isJson ? await res.json() : await res.text();
-  if (!res.ok) {
-    throw new ApiError(`Request failed: ${res.status}`, res.status, body);
-  }
-  return body as T;
-}
+export default client;

@@ -270,3 +270,11 @@ label {
 .button.ghost {
   background: transparent;
 }
+.button.google {
+  background: #4285f4;
+  border-color: #4285f4;
+  color: white;
+}
+.button.google:hover {
+  background: #3367d6;
+}
