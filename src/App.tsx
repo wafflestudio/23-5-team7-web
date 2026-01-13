@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
-import Modal from "./components/Modal";
-import LoginModal from "./components/LoginModal";
-import SignupModal from "./components/SignupModal";
-import EmailVerifyModal from "./components/EmailVerifyModal";
-import type { User } from "./types";
+import { useEffect, useState } from 'react';
+import EmailVerifyModal from './components/EmailVerifyModal';
+import LoginModal from './components/LoginModal';
+import Modal from './components/Modal';
+import SignupModal from './components/SignupModal';
+import type { User } from './types';
 
 export default function App() {
   const [showLogin, setShowLogin] = useState(false);
@@ -14,8 +14,8 @@ export default function App() {
   const [showMypage, setShowMypage] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    const userStr = localStorage.getItem("user");
+    const token = localStorage.getItem('access_token');
+    const userStr = localStorage.getItem('user');
     if (token && userStr) {
       setIsLoggedIn(true);
       setUser(JSON.parse(userStr));
@@ -25,13 +25,13 @@ export default function App() {
   const handleLoginSuccess = (loggedInUser: User) => {
     setIsLoggedIn(true);
     setUser(loggedInUser);
-    localStorage.setItem("user", JSON.stringify(loggedInUser));
+    localStorage.setItem('user', JSON.stringify(loggedInUser));
     setShowLogin(false);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("user");
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
     setIsLoggedIn(false);
     setUser(null);
     setShowMypage(false);
@@ -41,11 +41,15 @@ export default function App() {
     <>
       {/* 헤더 */}
       <header style={styles.header}>
-        <div style={styles.logo} onClick={() => setShowMypage(false)}>스누토토</div>
+        <div style={styles.logo} onClick={() => setShowMypage(false)}>
+          스누토토
+        </div>
         <div style={styles.authButtons}>
           {isLoggedIn && user ? (
             <>
-              <span style={styles.mypage} onClick={() => setShowMypage(true)}>{user.nickname}님 mypage</span>
+              <span style={styles.mypage} onClick={() => setShowMypage(true)}>
+                {user.nickname}님 mypage
+              </span>
               <button onClick={handleLogout}>로그아웃</button>
             </>
           ) : (
@@ -99,28 +103,28 @@ export default function App() {
 
 const styles = {
   header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "12px 24px",
-    borderBottom: "1px solid #ddd",
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '12px 24px',
+    borderBottom: '1px solid #ddd',
   },
   logo: {
-    fontSize: "20px",
-    fontWeight: "bold",
-    cursor: "pointer",
+    fontSize: '20px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
   },
   authButtons: {
-    display: "flex",
-    gap: "8px",
-    alignItems: "center",
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
   },
   mypage: {
-    cursor: "pointer",
-    color: "blue",
-    textDecoration: "underline",
+    cursor: 'pointer',
+    color: 'blue',
+    textDecoration: 'underline',
   },
   main: {
-    padding: "40px",
+    padding: '40px',
   },
 };

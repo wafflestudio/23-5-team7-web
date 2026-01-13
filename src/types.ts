@@ -2,7 +2,7 @@ export interface SignupRequest {
   email: string;
   password?: string;
   nickname: string;
-  social_type: "LOCAL" | "GOOGLE" | "KAKAO";
+  social_type: 'LOCAL' | 'GOOGLE' | 'KAKAO';
   social_id?: string | null;
 }
 
@@ -16,4 +16,3 @@ export interface User {
   email: string;
   nickname: string;
 }
-

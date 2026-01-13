@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { signup } from "../api/auth";
+import { useState } from 'react';
+import { signup } from '../api/auth';
 
 export default function SignupModal() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [nickname, setNickname] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [nickname, setNickname] = useState('');
 
   const handleSignup = async () => {
     try {
@@ -12,12 +12,12 @@ export default function SignupModal() {
         email,
         password,
         nickname,
-        social_type: "LOCAL",
+        social_type: 'LOCAL',
         social_id: null,
       });
-      alert("회원가입 성공. 로그인하세요.");
+      alert('회원가입 성공. 로그인하세요.');
     } catch {
-      alert("회원가입 실패");
+      alert('회원가입 실패');
     }
   };
 
