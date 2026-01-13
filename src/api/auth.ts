@@ -1,4 +1,4 @@
-import { LoginRequest, SignupRequest } from '../types';
+import type { LoginRequest, SignupRequest } from '../types';
 import client from './client';
 
 /* 일반 회원가입 */
