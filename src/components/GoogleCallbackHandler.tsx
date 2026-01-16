@@ -76,11 +76,36 @@ export default function GoogleCallbackHandler({
         }
         localStorage.setItem('user', JSON.stringify(data.user));
         onLoginSuccess(data.user!);
+        // Redirect to home page after successful login
+        window.location.href = '/';
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Google callback error:', err);
-      const errorMessage =
-        err instanceof Error ? err.message : 'Google login failed';
+      let errorMessage = 'Google login failed';
+
+      if (err instanceof Error) {
+        // Handle axios error
+        const axiosErr = err as any;
+        if (axiosErr.response?.data?.error_code) {
+          const errorCode = axiosErr.response.data.error_code;
+          const errorMsg = axiosErr.response.data.error_msg;
+
+          if (errorCode === 'ERR_010') {
+            errorMessage = '서울대학교 이메일(@snu.ac.kr)로만 가입 가능합니다.';
+          } else if (errorCode === 'ERR_006') {
+            errorMessage = '이미 존재하는 이메일입니다.';
+          } else if (errorCode === 'ERR_019') {
+            errorMessage = 'Google 인증에 실패했습니다. 다시 시도해주세요.';
+          } else if (errorCode === 'ERR_020') {
+            errorMessage = '잘못된 요청입니다. 다시 시도해주세요.';
+          } else {
+            errorMessage = errorMsg || errorMessage;
+          }
+        } else {
+          errorMessage = err.message;
+        }
+      }
+
       onError?.(errorMessage);
     } finally {
       setIsProcessing(false);
