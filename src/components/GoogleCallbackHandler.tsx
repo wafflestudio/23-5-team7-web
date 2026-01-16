@@ -77,7 +77,8 @@ export default function GoogleCallbackHandler({
         }
         localStorage.setItem('user', JSON.stringify(data.user));
         onLoginSuccess(data.user!);
-        // Redirect to home page after successful login
+        // Clean URL history and redirect to home page
+        window.history.replaceState({}, '', '/');
         window.location.href = '/';
       }
     } catch (err: unknown) {
