@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import client from '../api/client';
 import type { User } from '../types';
@@ -85,7 +86,10 @@ export default function GoogleCallbackHandler({
 
       if (err instanceof Error) {
         // Handle axios error
-        const axiosErr = err as any;
+        const axiosErr = err as AxiosError<{
+          error_code?: string;
+          error_msg?: string;
+        }>;
         if (axiosErr.response?.data?.error_code) {
           const errorCode = axiosErr.response.data.error_code;
           const errorMsg = axiosErr.response.data.error_msg;
