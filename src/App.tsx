@@ -24,8 +24,11 @@ export default function App() {
   useEffect(() => {
     // Check if this is a Google OAuth callback
     const searchParams = new URLSearchParams(window.location.search);
-    const code = searchParams.get('code');
-    if (code) {
+    const needsSignup = searchParams.get('needs_signup');
+    const error = searchParams.get('error');
+    
+    // 리다이렉트 파라미터가 있으면 Google callback 처리
+    if (needsSignup !== null || error) {
       setIsGoogleCallback(true);
       return;
     }
