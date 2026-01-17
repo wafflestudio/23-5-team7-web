@@ -34,14 +34,6 @@ export default function GoogleCallbackHandler({
       return;
     }
 
-    // eslint-disable-next-line no-console
-    console.log('Google callback params:', {
-      needsSignup,
-      message,
-      email,
-      socialId,
-      socialType,
-    });
 
     if (needsSignup) {
       // 새 사용자 - 닉네임 설정 필요
