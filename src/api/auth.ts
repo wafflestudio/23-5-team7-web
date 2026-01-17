@@ -8,6 +8,9 @@ export const signup = (data: SignupRequest) => client.post('/api/users', data);
 export const login = (data: LoginRequest) =>
   client.post('/api/auth/login', data);
 
+/* 로그인 유저 정보 조회 (자동 로그인 판단용) */
+export const getMe = () => client.get('/api/auth/me');
+
 /* 인증메일 발송 */
 export const sendVerificationMail = () =>
   client.post(

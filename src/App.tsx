@@ -14,6 +14,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showMypage, setShowMypage] = useState(false);
+
   const [isGoogleCallback, setIsGoogleCallback] = useState(false);
   const [googleSignupData, setGoogleSignupData] = useState<{
     email: string;
@@ -22,18 +23,15 @@ export default function App() {
   } | null>(null);
 
   useEffect(() => {
-    // Check if this is a Google OAuth callback
     const searchParams = new URLSearchParams(window.location.search);
     const needsSignup = searchParams.get('needs_signup');
     const error = searchParams.get('error');
-    
-    // 리다이렉트 파라미터가 있으면 Google callback 처리
+
     if (needsSignup !== null || error) {
       setIsGoogleCallback(true);
       return;
     }
 
-    // Check for existing login session
     try {
       const token = localStorage.getItem('access_token');
       const userStr = localStorage.getItem('user');
@@ -41,11 +39,10 @@ export default function App() {
         setIsLoggedIn(true);
         setUser(JSON.parse(userStr));
       }
-    } catch (error) {
-      // Clear corrupted data from localStorage
+    } catch (err) {
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
-      console.error('Failed to parse stored user data:', error);
+      console.error(err);
     }
   }, []);
 
@@ -116,7 +113,6 @@ export default function App() {
 
   return (
     <>
-      {/* 헤더 */}
       <header style={styles.header}>
         <div style={styles.logo} onClick={() => setShowMypage(false)}>
           스누토토
@@ -124,8 +120,9 @@ export default function App() {
         <div style={styles.authButtons}>
           {isLoggedIn && user ? (
             <>
+              <span>{user.nickname}님</span>
               <span style={styles.mypage} onClick={() => setShowMypage(true)}>
-                {user.nickname}님 mypage
+                마이페이지
               </span>
               <button onClick={handleLogout}>로그아웃</button>
             </>
@@ -138,7 +135,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* 메인 콘텐츠 */}
       <main style={styles.main}>
         {showMypage ? (
           <div>
@@ -150,7 +146,6 @@ export default function App() {
         )}
       </main>
 
-      {/* 모달 영역 */}
       {showLogin && (
         <Modal onClose={() => setShowLogin(false)}>
           <LoginModal

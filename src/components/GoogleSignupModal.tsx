@@ -59,65 +59,38 @@ export default function GoogleSignupModal({
       </p>
 
       <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}
-        >
+        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
           이메일
         </label>
         <input
           type="email"
           value={email}
           disabled
-          placeholder="이메일"
           style={{
             width: '100%',
             padding: '10px',
             borderRadius: '4px',
             border: '1px solid #ddd',
             backgroundColor: '#f5f5f5',
-            boxSizing: 'border-box',
           }}
         />
-        <p style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-          @snu.ac.kr 이메일로만 가입 가능합니다.
-        </p>
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}
-        >
+        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
           닉네임
         </label>
         <input
           type="text"
-          placeholder="닉네임 입력"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
           disabled={isLoading}
-          style={{
-            width: '100%',
-            padding: '10px',
-            borderRadius: '4px',
-            border: '1px solid #ddd',
-            boxSizing: 'border-box',
-          }}
         />
       </div>
 
       <button
         onClick={handleSignup}
         disabled={isLoading || !nickname.trim()}
-        style={{
-          width: '100%',
-          padding: '10px',
-          backgroundColor: isLoading ? '#ccc' : '#007bff',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: isLoading ? 'not-allowed' : 'pointer',
-          marginTop: '20px',
-        }}
       >
         {isLoading ? '가입 중...' : '회원가입 완료'}
       </button>

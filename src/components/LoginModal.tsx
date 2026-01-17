@@ -13,11 +13,16 @@ export default function LoginModal({ onNeedVerify, onLoginSuccess }: Props) {
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
+      
+    if (!email || !password) {
+      alert('이메일과 비밀번호를 모두 입력해주세요');
+      return;
+    }
+      
     try {
       const res = await login({ email, password });
       localStorage.setItem('access_token', res.data.access_token);
       onLoginSuccess(res.data.user);
-      alert('로그인 성공');
     } catch (e) {
       const err = e as AxiosError<{
         error_code?: string;

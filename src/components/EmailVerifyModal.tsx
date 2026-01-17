@@ -8,7 +8,7 @@ export default function EmailVerifyModal() {
     <div>
       <h2>스누메일 인증</h2>
 
-      <button onClick={sendVerificationMail}>인증번호 발송 / 재전송</button>
+      <button onClick={sendVerificationMail}>인증번호 발송</button>
 
       <input
         placeholder="6자리 코드"
