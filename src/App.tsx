@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import EmailVerifyModal from './components/EmailVerifyModal';
+import GoogleCallback from './components/GoogleCallback';
+import GoogleSignupModal from './components/GoogleSignupModal';
 import LoginModal from './components/LoginModal';
 import Modal from './components/Modal';
 import SignupModal from './components/SignupModal';
 import type { User } from './types';
+import { getMe } from './api/auth';
 
 export default function App() {
   const [showLogin, setShowLogin] = useState(false);
@@ -12,14 +15,28 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showMypage, setShowMypage] = useState(false);
+  const [socialSignupData, setSocialSignupData] = useState<{
+    email: string;
+    social_id: string;
+    social_type: 'GOOGLE';
+  } | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
-    const userStr = localStorage.getItem('user');
-    if (token && userStr) {
-      setIsLoggedIn(true);
-      setUser(JSON.parse(userStr));
-    }
+    if (!token) return;
+
+    getMe()
+      .then((res) => {
+        setIsLoggedIn(true);
+        setUser(res.data);
+        localStorage.setItem('user', JSON.stringify(res.data));
+      })
+      .catch(() => {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        setIsLoggedIn(false);
+        setUser(null);
+      });
   }, []);
 
   const handleLoginSuccess = (loggedInUser: User) => {
@@ -39,6 +56,15 @@ export default function App() {
 
   return (
     <>
+      <GoogleCallback
+        onLoginSuccess={handleLoginSuccess}
+        onNeedSocialSignup={(data) => {
+          setSocialSignupData(data);
+        }}
+        onNeedVerify={() => {
+          setNeedVerify(true);
+        }}
+      />
       {/* 헤더 */}
       <header style={styles.header}>
         <div style={styles.logo} onClick={() => setShowMypage(false)}>
@@ -47,8 +73,9 @@ export default function App() {
         <div style={styles.authButtons}>
           {isLoggedIn && user ? (
             <>
+              <span>{user.nickname}님</span>
               <span style={styles.mypage} onClick={() => setShowMypage(true)}>
-                {user.nickname}님 mypage
+                마이페이지
               </span>
               <button onClick={handleLogout}>로그아웃</button>
             </>
@@ -95,6 +122,11 @@ export default function App() {
       {needVerify && (
         <Modal onClose={() => setNeedVerify(false)}>
           <EmailVerifyModal />
+        </Modal>
+      )}
+      {socialSignupData && (
+        <Modal onClose={() => setSocialSignupData(null)}>
+          <GoogleSignupModal data={socialSignupData} />
         </Modal>
       )}
     </>
