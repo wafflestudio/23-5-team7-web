@@ -34,6 +34,6 @@ export const confirmVerificationCode = (code: string) =>
 
 /* 구글 로그인 */
 export const googleLogin = () => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-  window.location.href = baseUrl + '/api/auth/google/login';
+  window.location.href =
+    'https://server.snutoto.o-r.kr/api/auth/google/login';
 };
