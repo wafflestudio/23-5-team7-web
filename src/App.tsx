@@ -50,9 +50,32 @@ export default function App() {
     const searchParams = new URLSearchParams(window.location.search);
     const needsSignup = searchParams.get('needs_signup');
     const error = searchParams.get('error');
+    const message = searchParams.get('message');
+    const email = searchParams.get('email');
+    const socialId = searchParams.get('social_id');
+    const socialType = searchParams.get('social_type');
 
-    if (needsSignup !== null || error) {
-      setIsGoogleCallback(true);
+    if (message) {
+      alert(decodeURIComponent(message)); // 사용자에게 메시지 표시
+    }
+
+    if (error) {
+      console.error('Login error:', error);
+      alert('로그인 실패: ' + decodeURIComponent(message || '알 수 없는 오류'));
+      window.location.href = '/login'; // 로그인 페이지로 리다이렉트
+      return;
+    }
+
+    if (needsSignup === 'true' && email && socialId && socialType) {
+      setGoogleSignupData({
+        email,
+        social_id: socialId,
+        social_type: socialType,
+      });
+      setIsGoogleCallback(false);
+    } else if (needsSignup === 'false') {
+      setIsLoggedIn(true);
+      setIsGoogleCallback(false);
     }
   }, []);
 

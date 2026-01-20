@@ -98,9 +98,12 @@ export default function GoogleSignupModal({
         </label>
         <input
           type="text"
+          id="nickname"
+          name="nickname"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
           disabled={isLoading}
+          autoComplete="nickname"
         />
       </div>
 
