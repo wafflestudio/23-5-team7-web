@@ -20,9 +20,21 @@ export default function GoogleSignupModal({
   const [nickname, setNickname] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const validateNickname = (nickname: string) => {
+    if (nickname.length < 2 || nickname.length > 20) {
+      onError?.('닉네임은 2자 이상 20자 이하로 입력해주세요.');
+      return false;
+    }
+    return true;
+  };
+
   const handleSignup = async () => {
     if (!nickname.trim()) {
       onError?.('닉네임을 입력해주세요');
+      return;
+    }
+
+    if (!validateNickname(nickname.trim())) {
       return;
     }
 
@@ -43,7 +55,7 @@ export default function GoogleSignupModal({
       onSignupSuccess(response.data.user);
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : 'Sign up failed';
+        err instanceof Error ? err.message : '회원가입 실패';
       onError?.(errorMessage);
       console.error('Google signup error:', err);
     } finally {
@@ -59,7 +71,9 @@ export default function GoogleSignupModal({
       </p>
 
       <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+        <label
+          style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}
+        >
           이메일
         </label>
         <input
@@ -77,7 +91,9 @@ export default function GoogleSignupModal({
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+        <label
+          style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}
+        >
           닉네임
         </label>
         <input
@@ -88,10 +104,7 @@ export default function GoogleSignupModal({
         />
       </div>
 
-      <button
-        onClick={handleSignup}
-        disabled={isLoading || !nickname.trim()}
-      >
+      <button onClick={handleSignup} disabled={isLoading || !nickname.trim()}>
         {isLoading ? '가입 중...' : '회원가입 완료'}
       </button>
     </div>

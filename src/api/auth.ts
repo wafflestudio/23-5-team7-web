@@ -8,8 +8,6 @@ export const signup = (data: SignupRequest) => client.post('/api/users', data);
 export const login = (data: LoginRequest) =>
   client.post('/api/auth/login', data);
 
-/* 로그인 유저 정보 조회 (자동 로그인 판단용) */
-export const getMe = () => client.get('/api/auth/me');
 
 /* 인증메일 발송 */
 export const sendVerificationMail = () =>
@@ -37,6 +35,5 @@ export const confirmVerificationCode = (code: string) =>
 
 /* 구글 로그인 */
 export const googleLogin = () => {
-  window.location.href =
-    'https://server.snutoto.o-r.kr/api/auth/google/login';
+  window.location.href = 'https://server.snutoto.o-r.kr/api/auth/google/login';
 };

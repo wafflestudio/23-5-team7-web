@@ -27,16 +27,15 @@ export default function GoogleCallbackHandler({
     const socialId = searchParams.get('social_id');
     const socialType = searchParams.get('social_type');
 
-    // 에러 처리
+    // Handle errors
     if (error) {
       onError?.(`${error}: ${message || ''}`);
       setIsProcessing(false);
       return;
     }
 
-
     if (needsSignup) {
-      // 새 사용자 - 닉네임 설정 필요
+      // New user - needs to set nickname
       if (email && socialId && socialType) {
         onNeedSignup({
           email,
@@ -47,9 +46,7 @@ export default function GoogleCallbackHandler({
         onError?.('Missing signup information');
       }
     } else {
-      // 기존 사용자 - 로그인 성공
-      // 토큰은 백엔드에서 쿠키로 설정됨
-      // 클라이언트에서 할 일: 로컬스토리지에 기본 사용자 정보 저장
+      // Existing user - login success
       const user: User = {
         email: email || '',
         nickname: '',
@@ -58,7 +55,6 @@ export default function GoogleCallbackHandler({
 
       localStorage.setItem('user', JSON.stringify(user));
       onLoginSuccess(user);
-      // URL 히스토리 정리 후 홈으로 리다이렉트
       window.history.replaceState({}, '', '/');
       window.location.href = '/';
     }
