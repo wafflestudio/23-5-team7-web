@@ -74,7 +74,12 @@ export default function App() {
       });
       setIsGoogleCallback(false);
     } else if (needsSignup === 'false') {
-      setIsLoggedIn(true);
+      // Ensure the user is marked as logged in for subsequent logins
+      const user = JSON.parse(localStorage.getItem('user') || 'null');
+      if (user) {
+        setIsLoggedIn(true);
+        setUser(user);
+      }
       setIsGoogleCallback(false);
     }
   }, []);
