@@ -22,7 +22,6 @@ export default function GoogleCallbackHandler({
     const searchParams = new URLSearchParams(window.location.search);
     const error = searchParams.get('error');
     const message = searchParams.get('message');
-    const needsSignup = searchParams.get('needs_signup') === 'true';
     const email = searchParams.get('email');
     const socialId = searchParams.get('social_id');
     const socialType = searchParams.get('social_type');
@@ -34,7 +33,22 @@ export default function GoogleCallbackHandler({
       return;
     }
 
+    // Check if the user already exists in localStorage
+    const existingUser = JSON.parse(localStorage.getItem('user') || 'null');
+    const needsSignup =
+      searchParams.get('needs_signup') === 'true' &&
+      !(existingUser && existingUser.email === email);
+
     if (needsSignup) {
+      // Check if the user already exists in localStorage
+      const existingUser = JSON.parse(localStorage.getItem('user') || 'null');
+      if (existingUser && existingUser.email === email) {
+        // Existing user - redirect to MyPage
+        onLoginSuccess(existingUser);
+        window.location.href = '/mypage';
+        return;
+      }
+
       // New user - needs to set nickname
       if (email && socialId && socialType) {
         onNeedSignup({
@@ -49,14 +63,15 @@ export default function GoogleCallbackHandler({
       // Existing user - login success
       const user: User = {
         email: email || '',
-        nickname: '',
+        nickname: JSON.parse(localStorage.getItem('user') || '{}').nickname || '',
         id: 0,
       };
 
       localStorage.setItem('user', JSON.stringify(user));
       onLoginSuccess(user);
-      window.history.replaceState({}, '', '/');
-      window.location.href = '/';
+
+      // Redirect to MyPage
+      window.location.href = '/mypage';
     }
 
     setIsProcessing(false);

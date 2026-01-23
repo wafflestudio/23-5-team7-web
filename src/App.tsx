@@ -4,6 +4,7 @@ import GoogleCallbackHandler from './components/GoogleCallbackHandler';
 import GoogleSignupModal from './components/GoogleSignupModal';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import MyPage from './pages/MyPage/MyPage';
 import type { User } from './types';
 import './styles.css'; // Import styles for layout
 
@@ -79,6 +80,7 @@ export default function App() {
       if (user) {
         setIsLoggedIn(true);
         setUser(user);
+        alert(`환영합니다, ${user.nickname}님!`);
       }
       setIsGoogleCallback(false);
     }
@@ -94,7 +96,7 @@ export default function App() {
               {isLoggedIn && user ? (
                 <>
                   <span>{user.nickname} 님</span>
-                  <button>마이페이지</button>
+                  <button onClick={() => window.location.href = '/mypage'}>마이페이지</button>
                 </>
               ) : (
                 <>
@@ -129,6 +131,7 @@ export default function App() {
       } />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/mypage" element={<MyPage />} />
     </Routes>
   );
 }

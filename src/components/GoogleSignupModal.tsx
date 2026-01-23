@@ -51,7 +51,16 @@ export default function GoogleSignupModal({
       if (response.data.refresh_token) {
         localStorage.setItem('refresh_token', response.data.refresh_token);
       }
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem('user', JSON.stringify({
+        ...response.data.user,
+        nickname: nickname.trim(), // Save nickname
+      }));
+
+      // Clear the needs_signup flag from the URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('needs_signup');
+      window.history.replaceState({}, '', url.toString());
+
       onSignupSuccess(response.data.user);
     } catch (err) {
       const errorMessage =
