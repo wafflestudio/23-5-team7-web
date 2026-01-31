@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": ["dist", ".yarn", "node_modules"]
+    "ignore": ["dist", ".yarn", "node_modules", "public/mockServiceWorker.js"]
   },
   "formatter": {
     "enabled": true,
@@ -104,7 +104,7 @@
         "useConst": "error"
       }
     },
-    "ignore": ["dist", ".yarn", "node_modules"]
+    "ignore": ["dist", ".yarn", "node_modules", "public/mockServiceWorker.js"]
   },
   "javascript": {
     "formatter": {

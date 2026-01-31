@@ -34,9 +34,14 @@ export const confirmVerificationCode = (code: string) =>
 
 /* 구글 로그인 */
 export const googleLogin = () => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  // Match upstream behavior: redirect_uri must be the app root, not the current path.
+  // IMPORTANT: Google Accounts UI should NOT be served through the Vite /api proxy.
+  // If it's proxied, the login page can become non-functional (e.g., "Next" does nothing).
+  // So we always navigate the browser directly to the backend origin.
+  const backendOrigin =
+    import.meta.env.VITE_API_BASE_URL || 'https://server.snutoto.o-r.kr';
   const redirectUri = `${window.location.origin}/`;
   window.location.href =
-    baseUrl +
+    backendOrigin +
     `/api/auth/google/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
 };

@@ -23,18 +23,51 @@ export default function SignupModal() {
 
   return (
     <div>
-      <h2>회원가입</h2>
-      <input placeholder="이메일" onChange={(e) => setEmail(e.target.value)} />
-      <input
-        placeholder="비밀번호"
-        type="password"
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <input
-        placeholder="닉네임"
-        onChange={(e) => setNickname(e.target.value)}
-      />
-      <button onClick={handleSignup}>회원가입</button>
+      <div className="modal-header">
+        <h2 style={{ margin: 0 }}>회원가입</h2>
+      </div>
+
+      <div className="modal-body">
+        <div className="form-row">
+          <label htmlFor="signup-email">이메일</label>
+          <input
+            id="signup-email"
+            className="input"
+            placeholder="example@snu.ac.kr"
+            autoComplete="email"
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+
+        <div className="form-row">
+          <label htmlFor="signup-password">비밀번호</label>
+          <input
+            id="signup-password"
+            className="input"
+            placeholder="비밀번호"
+            type="password"
+            autoComplete="new-password"
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+
+        <div className="form-row">
+          <label htmlFor="signup-nickname">닉네임</label>
+          <input
+            id="signup-nickname"
+            className="input"
+            placeholder="닉네임"
+            autoComplete="nickname"
+            onChange={(e) => setNickname(e.target.value)}
+          />
+        </div>
+
+        <div className="modal-footer">
+          <button className="button primary" onClick={handleSignup} type="button">
+            회원가입
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

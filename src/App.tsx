@@ -2,12 +2,21 @@ import { useEffect, useState } from 'react';
 import EmailVerifyModal from './components/EmailVerifyModal';
 import GoogleCallbackHandler from './components/GoogleCallbackHandler';
 import GoogleSignupModal from './components/GoogleSignupModal';
+import EventCreateModal from './components/EventCreateModal';
+import EventDetailPage from './components/EventDetailPage';
+import EventList from './components/EventList';
 import LoginModal from './components/LoginModal';
 import Modal from './components/Modal';
 import SignupModal from './components/SignupModal';
 import type { User } from './types';
 
 export default function App() {
+  // --- Events UI state ---
+  const [createOpen, setCreateOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [eventsRefreshKey, setEventsRefreshKey] = useState(0);
+
+  // --- Auth UI state ---
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [needVerify, setNeedVerify] = useState(false);
@@ -20,6 +29,17 @@ export default function App() {
     social_id: string;
     social_type: string;
   } | null>(null);
+
+  // Hash-based navigation: #/events/{id}
+  useEffect(() => {
+    const apply = () => {
+      const m = location.hash.match(/^#\/events\/(.+)$/);
+      setDetailId(m ? m[1] : null);
+    };
+    apply();
+    window.addEventListener('hashchange', apply);
+    return () => window.removeEventListener('hashchange', apply);
+  }, []);
 
   useEffect(() => {
     // Check if this is a Google OAuth callback
@@ -34,9 +54,15 @@ export default function App() {
     try {
       const token = localStorage.getItem('access_token');
       const userStr = localStorage.getItem('user');
-      if (token && userStr) {
+      // Consider token presence as the source of truth for login.
+      // user can be missing (e.g. after refresh, social login flows, or storage cleanup).
+      if (token && token.trim().length > 0) {
         setIsLoggedIn(true);
-        setUser(JSON.parse(userStr));
+        if (userStr) {
+          setUser(JSON.parse(userStr));
+        } else {
+          setUser(null);
+        }
       }
     } catch (error) {
       // Clear corrupted data from localStorage
@@ -56,6 +82,7 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     setIsLoggedIn(false);
     setUser(null);
@@ -113,41 +140,114 @@ export default function App() {
 
   return (
     <>
-      {/* 헤더 */}
-      <header style={styles.header}>
-        <div style={styles.logo} onClick={() => setShowMypage(false)}>
+      <header className="app-header">
+        <button
+          className="app-logo"
+          type="button"
+          onClick={() => setShowMypage(false)}
+        >
           스누토토
-        </div>
-        <div style={styles.authButtons}>
+        </button>
+        <div className="app-auth">
           {isLoggedIn && user ? (
             <>
-              <span style={styles.mypage} onClick={() => setShowMypage(true)}>
+              <button
+                className="button ghost"
+                type="button"
+                onClick={() => setShowMypage(true)}
+              >
                 {user.nickname}님 mypage
-              </span>
-              <button onClick={handleLogout}>로그아웃</button>
+              </button>
+              <button className="button" type="button" onClick={handleLogout}>
+                로그아웃
+              </button>
             </>
           ) : (
             <>
-              <button onClick={() => setShowLogin(true)}>로그인</button>
-              <button onClick={() => setShowSignup(true)}>회원가입</button>
+              <button
+                className="button primary"
+                type="button"
+                onClick={() => setShowLogin(true)}
+              >
+                로그인
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={() => setShowSignup(true)}
+              >
+                회원가입
+              </button>
             </>
           )}
         </div>
       </header>
 
-      {/* 메인 콘텐츠 */}
-      <main style={styles.main}>
+      <main className="app-main">
         {showMypage ? (
           <div>
             <h1>마이페이지</h1>
             <p>여기에 사용자 정보를 표시합니다.</p>
           </div>
         ) : (
-          <h1>스누토토에 오신 것을 환영합니다</h1>
+          <div className="container">
+            {!detailId && (
+              <div
+                style={{
+                  marginTop: 12,
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <button
+                  className="button primary"
+                  onClick={() => {
+                    // Permit event creation when a token exists, even if user info isn't loaded.
+                    const token = localStorage.getItem('access_token');
+                    if (!token || token.trim().length === 0) {
+                      alert('이벤트 생성은 로그인 후 가능합니다.');
+                      setShowLogin(true);
+                      return;
+                    }
+                    console.debug('[EventCreate] open modal');
+                    setCreateOpen(true);
+                  }}
+                >
+                  이벤트 생성
+                </button>
+              </div>
+            )}
+
+            <section style={{ marginTop: 24 }}>
+              {detailId ? (
+                <EventDetailPage
+                  eventId={detailId}
+                  onBack={() => {
+                    if (location.hash) location.hash = '';
+                  }}
+                />
+              ) : (
+                <EventList refreshKey={eventsRefreshKey} />
+              )}
+            </section>
+
+            <EventCreateModal
+              open={createOpen}
+              onClose={() => setCreateOpen(false)}
+              onCreated={(ev) => {
+                // Trigger list refresh on next render (useful when backend is eventually consistent)
+                setEventsRefreshKey((k) => k + 1);
+                // Navigate to the newly created event detail
+                if (ev?.event_id) {
+                  location.hash = `#/events/${ev.event_id}`;
+                }
+                setCreateOpen(false);
+              }}
+            />
+          </div>
         )}
       </main>
 
-      {/* 모달 영역 */}
       {showLogin && (
         <Modal onClose={() => setShowLogin(false)}>
           <LoginModal
@@ -174,31 +274,3 @@ export default function App() {
     </>
   );
 }
-
-const styles = {
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '12px 24px',
-    borderBottom: '1px solid #ddd',
-  },
-  logo: {
-    fontSize: '20px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-  },
-  authButtons: {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-  },
-  mypage: {
-    cursor: 'pointer',
-    color: 'blue',
-    textDecoration: 'underline',
-  },
-  main: {
-    padding: '40px',
-  },
-};

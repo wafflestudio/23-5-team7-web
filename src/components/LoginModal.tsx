@@ -38,15 +38,43 @@ export default function LoginModal({ onNeedVerify, onLoginSuccess }: Props) {
 
   return (
     <div>
-      <h2>로그인</h2>
-      <input placeholder="이메일" onChange={(e) => setEmail(e.target.value)} />
-      <input
-        placeholder="비밀번호"
-        type="password"
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button onClick={handleLogin}>로그인</button>
-      <button onClick={googleLogin}>Google 로그인</button>
+      <div className="modal-header">
+        <h2 style={{ margin: 0 }}>로그인</h2>
+      </div>
+
+      <div className="modal-body">
+        <div className="form-row">
+          <label htmlFor="login-email">이메일</label>
+          <input
+            id="login-email"
+            className="input"
+            placeholder="example@snu.ac.kr"
+            autoComplete="email"
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+
+        <div className="form-row">
+          <label htmlFor="login-password">비밀번호</label>
+          <input
+            id="login-password"
+            className="input"
+            placeholder="비밀번호"
+            type="password"
+            autoComplete="current-password"
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+
+        <div className="modal-footer">
+          <button className="button google" onClick={googleLogin} type="button">
+            Google 로그인
+          </button>
+          <button className="button primary" onClick={handleLogin} type="button">
+            로그인
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
