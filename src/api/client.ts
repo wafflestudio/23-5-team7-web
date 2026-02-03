@@ -17,6 +17,7 @@ class ApiError extends Error {
 
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
+  withCredentials: true, // Include cookies in requests
 });
 
 client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -25,6 +26,7 @@ client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // If no token in localStorage, the request will still work if cookies are present
   return config;
 });
 
@@ -79,6 +81,7 @@ export async function request<T>(
 
   const res = await fetch(url, {
     headers,
+    credentials: 'include', // Include cookies
     ...options,
   });
 

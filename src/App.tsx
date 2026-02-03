@@ -4,6 +4,8 @@ import EmailVerifyModal from './components/EmailVerifyModal';
 import EventCreateModal from './components/EventCreateModal';
 import EventDetailPage from './components/EventDetailPage';
 import EventList from './components/EventList';
+import GoogleCallbackHandler from './components/GoogleCallbackHandler';
+import GoogleSignupModal from './components/GoogleSignupModal';
 import LoginModal from './components/LoginModal';
 import Modal from './components/Modal';
 import MyPage from './components/MyPage';
@@ -26,6 +28,15 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [showMypage, setShowMypage] = useState(false);
 
+  // Google OAuth states
+  const [showGoogleCallback, setShowGoogleCallback] = useState(false);
+  const [showGoogleSignup, setShowGoogleSignup] = useState(false);
+  const [googleSignupData, setGoogleSignupData] = useState<{
+    email: string;
+    social_id: string;
+    social_type: string;
+  } | null>(null);
+
   // Hash-based navigation: #/events/{id}
   useEffect(() => {
     const apply = () => {
@@ -40,27 +51,68 @@ export default function App() {
     return () => window.removeEventListener('hashchange', apply);
   }, []);
 
+  // Check for Google OAuth callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const needsSignup = params.get('needs_signup');
+    const error = params.get('error');
+
+    if (needsSignup || error) {
+      setShowGoogleCallback(true);
+    }
+  }, []);
+
   useEffect(() => {
     // Check for existing login session
-    try {
-      const token = localStorage.getItem('access_token');
-      const userStr = localStorage.getItem('user');
-      // Consider token presence as the source of truth for login.
-      // user can be missing (e.g. after refresh, social login flows, or storage cleanup).
-      if (token && token.trim().length > 0) {
-        setIsLoggedIn(true);
-        if (userStr) {
-          setUser(JSON.parse(userStr));
-        } else {
-          setUser(null);
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const userStr = localStorage.getItem('user');
+        const authMethod = localStorage.getItem('auth_method');
+
+        // If we have a localStorage token, use it
+        if (token && token.trim().length > 0) {
+          setIsLoggedIn(true);
+          if (userStr) {
+            setUser(JSON.parse(userStr));
+          }
+          return;
         }
+
+        // If we had Google auth before, try to fetch user info from cookies
+        if (authMethod === 'google') {
+          try {
+            const response = await fetch('/api/users/me/profile', {
+              credentials: 'include',
+            });
+            if (response.ok) {
+              const data = await response.json();
+              const user: User = {
+                id: data.user_id,
+                email: data.email,
+                nickname: data.nickname,
+              };
+              setIsLoggedIn(true);
+              setUser(user);
+              localStorage.setItem('user', JSON.stringify(user));
+              return;
+            }
+          } catch (error) {
+            // Cookie session might have expired
+            console.error('Failed to restore Google session:', error);
+            localStorage.removeItem('auth_method');
+          }
+        }
+      } catch (error) {
+        // Clear corrupted data from localStorage
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('auth_method');
+        console.error('Failed to parse stored user data:', error);
       }
-    } catch (error) {
-      // Clear corrupted data from localStorage
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
-      console.error('Failed to parse stored user data:', error);
-    }
+    };
+
+    checkAuth();
   }, []);
 
   const handleLoginSuccess = (loggedInUser: User) => {
@@ -75,6 +127,7 @@ export default function App() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
+    localStorage.removeItem('auth_method');
     notifySessionChanged();
     setIsLoggedIn(false);
     setUser(null);
@@ -163,9 +216,13 @@ export default function App() {
                 <button
                   className="button primary"
                   onClick={() => {
-                    // Permit event creation when a token exists, even if user info isn't loaded.
+                    // Permit event creation when a token exists or Google auth is active
                     const token = localStorage.getItem('access_token');
-                    if (!token || token.trim().length === 0) {
+                    const authMethod = localStorage.getItem('auth_method');
+                    if (
+                      (!token || token.trim().length === 0) &&
+                      authMethod !== 'google'
+                    ) {
                       alert('이벤트 생성은 로그인 후 가능합니다.');
                       setShowLogin(true);
                       return;
@@ -233,6 +290,36 @@ export default function App() {
       {needVerify && (
         <Modal onClose={() => setNeedVerify(false)}>
           <EmailVerifyModal />
+        </Modal>
+      )}
+
+      {showGoogleCallback && (
+        <GoogleCallbackHandler
+          onLoginSuccess={handleLoginSuccess}
+          onNeedSignup={(data) => {
+            setGoogleSignupData(data);
+            setShowGoogleCallback(false);
+            setShowGoogleSignup(true);
+          }}
+          onError={(message) => {
+            alert(message);
+            setShowGoogleCallback(false);
+          }}
+        />
+      )}
+
+      {showGoogleSignup && googleSignupData && (
+        <Modal
+          onClose={() => {
+            setShowGoogleSignup(false);
+            setGoogleSignupData(null);
+          }}
+        >
+          <GoogleSignupModal
+            email={googleSignupData.email}
+            socialId={googleSignupData.social_id}
+            socialType={googleSignupData.social_type}
+          />
         </Modal>
       )}
     </>

@@ -70,7 +70,14 @@ export default function LoginModal({ onNeedVerify, onLoginSuccess }: Props) {
           <button
             className="button google"
             type="button"
-            onClick={() => alert('아직 구현되지 않았습니다')}
+            onClick={() => {
+              // Redirect to Google OAuth login
+              // Use full backend URL to bypass Vite proxy for OAuth flow
+              const backendUrl =
+                import.meta.env.VITE_API_BASE_URL ||
+                'https://server.snutoto.o-r.kr';
+              window.location.href = `${backendUrl}/api/auth/google/login`;
+            }}
           >
             Google 로그인
           </button>
