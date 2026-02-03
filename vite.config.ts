@@ -6,9 +6,15 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://server.snutoto.o-r.kr', // 백엔드 주소
+        target: 'https://server.snutoto.o-r.kr',
         changeOrigin: true,
         secure: false,
+        followRedirects: true,
+        ws: true,
+        // NOTE: Don't rewrite redirect Location headers here.
+        // For OAuth flows, the backend must be able to redirect the browser to an absolute
+        // frontend origin (e.g. http://localhost:5173/) after finishing authentication.
+        // Rewriting to relative paths can break redirect_uri handling.
       },
     },
   },
