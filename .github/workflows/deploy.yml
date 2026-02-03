@@ -20,6 +20,10 @@ jobs:
           node-version: "20.11.1"
 
       - name: Build & Export
+        env:
+          # Build-time env for Vite. Must be set so the deployed static site calls the backend API.
+          # Configure this in GitHub repo Settings -> Secrets/Variables.
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         run: |
           yarn install
           yarn build
