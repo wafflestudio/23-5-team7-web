@@ -3,6 +3,11 @@ import { getEvent } from '../api/events';
 import { createBet } from '../api/events';
 import type { EventDetail, EventStatus } from '../types';
 import EventStatusChange from './EventStatusChange';
+import LikeButton from './LikeButton';
+import type { OddsMessage } from '../api/ws';
+import { getOddsWsUrl } from '../api/ws';
+import { useIsLoggedIn } from '../auth/session';
+import CommentsSection from './CommentsSection';
 
 interface Props {
   eventId: string;
@@ -26,14 +31,17 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [closeTime, setCloseTime] = useState(''); // ISO
-  // For settlement testing: default to CLOSED until real API value arrives.
-  const [status, setStatus] = useState<EventStatus>('CLOSED');
+  // Keep blank-ish until real API value arrives; avoids enabling settlement by mistake.
+  const [status, setStatus] = useState<EventStatus>('READY');
 
   // The event detail API response doesn't currently include created_at in our types.
   // We'll derive a reasonable start time for the tooltip from end_at (minus 24h).
   const [createdAt, setCreatedAt] = useState<string>(''); // ISO (optional)
   const [options, setOptions] = useState<EventDetail['options']>([]);
   const [images, setImages] = useState<EventDetail['images']>([]);
+  const [likeCount, setLikeCount] = useState<number>(0);
+  const [isLiked, setIsLiked] = useState<boolean | null>(null);
+  const isLoggedIn = useIsLoggedIn();
 
   const totalBetAmount = useMemo(() => {
     return options.reduce((acc, o) => acc + (o.option_total_amount ?? 0), 0);
@@ -93,6 +101,8 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
         setCloseTime(res.end_at ?? '');
         setOptions(res.options ?? []);
         setImages(res.images ?? []);
+    setLikeCount(res.like_count ?? 0);
+    setIsLiked(res.is_liked ?? null);
         setCreatedAt('');
         setDescription(res.description ?? '');
         setSelectedOptionId(null);
@@ -110,10 +120,12 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
         setTitle('이벤트');
         setDescription('');
         setCloseTime('');
-  setStatus('CLOSED');
+    setStatus('READY');
         setCreatedAt('');
         setOptions([]);
         setImages([]);
+    setLikeCount(0);
+    setIsLiked(null);
         setSelectedOptionId(null);
         setBetOpen(false);
         setBetAmount('');
@@ -129,6 +141,134 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
     };
   }, [eventId]);
 
+  // When login/logout happens, refetch to update personalized fields like is_liked.
+  useEffect(() => {
+    // Avoid racing with the initial load: just reuse the same fetch fn.
+    let alive = true;
+    (async () => {
+      try {
+        const res = await getEvent(eventId);
+        if (!alive) return;
+        setLikeCount(res.like_count ?? 0);
+        setIsLiked(res.is_liked ?? null);
+      } catch {
+        // Non-fatal
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [eventId, isLoggedIn]);
+
+  // WebSocket: live odds updates
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    let alive = true;
+    let reconnectTimer: number | null = null;
+    let attempt = 0;
+
+    const connect = () => {
+      if (!alive) return;
+      const url = getOddsWsUrl(eventId);
+
+      try {
+        ws = new WebSocket(url);
+      } catch {
+        return;
+      }
+
+  if (import.meta.env.DEV) console.debug('[odds-ws] connect', { eventId, url });
+
+      ws.addEventListener('open', () => {
+        attempt = 0;
+        if (import.meta.env.DEV) console.debug('[odds-ws] open', { eventId });
+      });
+
+      ws.addEventListener('error', () => {
+        if (import.meta.env.DEV) console.warn('[odds-ws] error', { eventId });
+      });
+
+      ws.addEventListener('close', (ev) => {
+        if (import.meta.env.DEV)
+          console.warn('[odds-ws] close', { eventId, code: ev.code, reason: ev.reason });
+        if (!alive) return;
+
+        // Auto-reconnect on unexpected close.
+        // Note: normal page change uses code 1000.
+        if (ev.code === 1000) return;
+        attempt += 1;
+        const delay = Math.min(10_000, 500 * Math.pow(2, Math.min(attempt, 4)));
+        reconnectTimer = window.setTimeout(() => {
+          connect();
+        }, delay);
+      });
+
+      ws.addEventListener('message', (ev) => {
+        if (!alive) return;
+        try {
+          const msg = JSON.parse(String(ev.data)) as OddsMessage;
+          // Be lenient: some servers may omit event_id in update frames.
+          // If event_id is present and doesn't match, ignore.
+          if (!msg) return;
+          if ('event_id' in msg && msg.event_id && msg.event_id !== eventId) return;
+
+          if (msg.type === 'initial') {
+            setOptions((prev) =>
+              prev.map((o) => {
+                const found = msg.options.find((x) => x.option_id === o.option_id);
+                const odds = found ? Number(found.odds) : NaN;
+                return found && Number.isFinite(odds) ? { ...o, odds } : o;
+              })
+            );
+            return;
+          }
+
+          if (msg.type === 'odds_update') {
+            let applied = false;
+            setOptions((prev) => {
+              const next = prev.map((o) => {
+                const found = msg.options.find((x) => x.option_id === o.option_id);
+                if (!found) return o;
+                const odds = Number(found.odds);
+                if (!Number.isFinite(odds)) return o;
+                // Avoid needless re-renders when odds didn't actually change.
+                if (o.odds === odds) return o;
+                applied = true;
+                return { ...o, odds };
+              });
+              return next;
+            });
+
+            // If we received an update but couldn't apply it (e.g. options not loaded yet
+            // or server uses different option ids), fall back to refetching the event detail.
+            if (!applied) {
+              void refreshEvent().catch(() => {
+                /* ignore */
+              });
+            }
+          }
+        } catch {
+          // ignore non-JSON frames
+        }
+      });
+    };
+
+    connect();
+
+    return () => {
+      alive = false;
+
+      if (reconnectTimer) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+
+      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        ws.close(1000, 'page change');
+      }
+    };
+  }, [eventId]);
+
   const refreshEvent = async () => {
     const res = await getEvent(eventId);
     setTitle(res.title);
@@ -137,6 +277,8 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
     setOptions(res.options ?? []);
     setImages(res.images ?? []);
     setDescription(res.description ?? '');
+    setLikeCount(res.like_count ?? 0);
+    setIsLiked(res.is_liked ?? null);
   };
   const normalizePointInput = (raw: string) => {
     // Keep digits only (so users can paste with commas)
@@ -159,10 +301,12 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
       description,
       status,
       end_at: closeTime || '',
+      like_count: likeCount,
+      is_liked: isLiked,
       options,
       images: images ?? [],
     }),
-    [eventId, title, description, status, closeTime, options, images]
+    [eventId, title, description, status, closeTime, likeCount, isLiked, options, images]
   );
 
   const startIso = useMemo(() => {
@@ -211,13 +355,23 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
   };
 
   return (
-    <section>
+    <section className="event-detail-layout">
+      <div className="event-detail-main">
       <header className="event-hero">
         <div className="event-hero-top">
           <button className="button" onClick={onBack}>
             목록으로
           </button>
           <div style={{ display: 'flex', gap: 8 }}>
+            <LikeButton
+              eventId={eventId}
+              likeCount={likeCount}
+              isLiked={isLiked}
+              onChanged={(next) => {
+                setLikeCount(next.likeCount);
+                setIsLiked(next.isLiked);
+              }}
+            />
             <button
               className="button"
               onClick={() => {
@@ -466,13 +620,21 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
               >
                 <div className="option-top">
                   {o.option_image_url ? (
-                    <button
-                      type="button"
+                    <div
                       className="option-image-button"
+                      role="button"
+                      tabIndex={0}
                       title="이미지 확대"
                       onClick={(e) => {
                         e.stopPropagation();
                         setLightboxUrl(o.option_image_url ?? null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setLightboxUrl(o.option_image_url ?? null);
+                        }
                       }}
                     >
                       <img
@@ -481,15 +643,23 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
                         alt={o.name}
                         loading="lazy"
                       />
-                    </button>
+                    </div>
                   ) : (
-                    <button
-                      type="button"
+                    <div
                       className="option-image-button"
+                      role="button"
+                      tabIndex={0}
                       title="이미지 없음"
                       onClick={(e) => {
                         e.stopPropagation();
                         alert('이 옵션에는 이미지가 없습니다.');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          alert('이 옵션에는 이미지가 없습니다.');
+                        }
                       }}
                     >
                       <div className="option-image placeholder">
@@ -497,7 +667,7 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
                           📷
                         </span>
                       </div>
-                    </button>
+                    </div>
                   )}
                   <div className="option-title-row">
                     <div className="option-name">{o.name}</div>
@@ -622,6 +792,11 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
         </div>
       )}
 
+      </div>
+
+      <aside className="comments-sidebar" aria-label="댓글">
+        <CommentsSection eventId={eventId} />
+      </aside>
     </section>
   );
 };

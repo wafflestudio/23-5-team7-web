@@ -56,6 +56,8 @@ export interface EventSummary {
   status: EventStatus;
   total_participants?: number;
   end_at: string; // ISO datetime string
+  like_count?: number;
+  is_liked?: boolean | null;
   options: EventOptionSummary[];
   images?: EventImage[];
 }
@@ -67,6 +69,8 @@ export interface EventDetail {
   description: string;
   status: EventStatus;
   total_participants_count?: number;
+  like_count?: number;
+  is_liked?: boolean | null;
   options: EventOptionSummary[];
   images: EventImage[];
   end_at: string;
@@ -121,4 +125,81 @@ export interface CreateBetResponse {
   bet_amount: number;
   created_at?: string;
   status?: 'PENDING' | 'CANCELLED' | 'SETTLED' | string;
+}
+
+// ===== Step 4: My page (me) =====
+export type BetStatus = 'PENDING' | 'WIN' | 'LOSE' | 'REFUNDED';
+
+export interface MeBet {
+  bet_id: UUID;
+  event_id: UUID;
+  event_title: string;
+  option_id: UUID;
+  option_name: string;
+  amount: number;
+  status: BetStatus;
+  created_at: string; // ISO
+}
+
+export interface MeBetsResponse {
+  total_count: number;
+  bets: MeBet[];
+}
+
+export type PointHistoryReason = 'SIGNUP' | 'BET' | 'WIN' | 'LOSE' | 'REFUND' | 'ETC';
+
+export interface MePointHistoryItem {
+  history_id: UUID;
+  reason: PointHistoryReason;
+  change_amount: number;
+  points_after: number;
+  bet_id: UUID | null;
+  event_id: UUID | null;
+  event_title: string | null;
+  option_id: UUID | null;
+  option_name: string | null;
+  created_at: string; // ISO
+}
+
+export interface MePointHistoryResponse {
+  current_balance: number;
+  total_count: number;
+  history: MePointHistoryItem[];
+}
+
+export interface MeProfile {
+  user_id: UUID;
+  email: string;
+  nickname: string;
+  points: number;
+  role?: 'USER' | 'ADMIN' | string;
+  is_verified?: boolean;
+  is_snu_verified?: boolean;
+  social_type?: 'LOCAL' | 'GOOGLE' | 'KAKAO' | string;
+  created_at?: string;
+}
+
+// ===== Step 7: Comments =====
+export interface Comment {
+  comment_id: UUID;
+  event_id: UUID;
+  user_id: UUID;
+  nickname: string;
+  content: string;
+  created_at: string; // ISO
+  updated_at: string | null; // ISO | null
+}
+
+export interface CreateCommentRequest {
+  content: string;
+}
+
+export interface UpdateCommentRequest {
+  content: string;
+}
+
+export interface ListCommentsResult {
+  comments: Comment[];
+  next_cursor: string | null;
+  has_more: boolean;
 }

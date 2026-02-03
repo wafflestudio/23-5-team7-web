@@ -20,6 +20,7 @@ interface Props {
 
 const EventList = ({ refreshKey }: Props) => {
   const [filter, setFilter] = useState<EventStatus | ''>('');
+  const [onlyLiked, setOnlyLiked] = useState(false);
   const [items, setItems] = useState<EventSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +37,8 @@ const EventList = ({ refreshKey }: Props) => {
   const lastScrollTopRef = useRef(0);
   const bounceTickRef = useRef(0);
   const lastAutoLoadAtRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const requestSeqRef = useRef(0);
 
   const maybeAutoLoadMore = (source: 'scroll' | 'wheel' | 'touchmove') => {
     allowAutoLoadRef.current = true;
@@ -130,21 +133,30 @@ const EventList = ({ refreshKey }: Props) => {
       return;
     }
 
-    loadingRef.current = true;
+  // Cancel any in-flight request so rapid filter toggles don't race.
+  abortRef.current?.abort();
+  abortRef.current = new AbortController();
+  const seq = ++requestSeqRef.current;
+
+  loadingRef.current = true;
     setLoading(true);
     setError(null);
     try {
       // Prevent "stuck loading" when the request hangs or never resolves.
       const res = await Promise.race([
         listEvents({
-        status: filter || undefined,
-        cursor: opts.reset ? undefined : cursorRef.current ?? undefined,
-        limit: PAGE_SIZE,
+          status: filter || undefined,
+          liked: onlyLiked ? true : undefined,
+          cursor: opts.reset ? undefined : cursorRef.current ?? undefined,
+          limit: PAGE_SIZE,
         }),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('이벤트 목록 요청이 시간 초과되었습니다.')), 10000)
         ),
       ]);
+
+      // If a newer request started, ignore stale results.
+      if (seq !== requestSeqRef.current) return;
 
       setItems((prev) => {
         const next = opts.reset ? res.events : [...prev, ...res.events];
@@ -167,6 +179,9 @@ const EventList = ({ refreshKey }: Props) => {
       hasMoreRef.current = nextHasMore;
       setHasMore(nextHasMore);
     } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        return;
+      }
       const msg = e instanceof Error ? e.message : '이벤트 목록 로딩 실패';
       setError(msg);
       if (opts.reset) {
@@ -184,7 +199,7 @@ const EventList = ({ refreshKey }: Props) => {
 
   // Initial load + reset on filter/refreshKey change (deduped)
   useEffect(() => {
-    const resetKey = `${filter}::${refreshKey ?? ''}`;
+    const resetKey = `${filter}::${onlyLiked}::${refreshKey ?? ''}`;
     if (!didInitialLoadRef.current) {
       didInitialLoadRef.current = true;
     } else if (lastResetKeyRef.current === resetKey) {
@@ -199,7 +214,7 @@ const EventList = ({ refreshKey }: Props) => {
     setHasMore(true);
     fetchPage({ reset: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, refreshKey]);
+  }, [filter, onlyLiked, refreshKey]);
 
   // Infinite scroll: load when sentinel appears
   useEffect(() => {
@@ -269,6 +284,15 @@ const EventList = ({ refreshKey }: Props) => {
               </option>
             ))}
           </select>
+
+          <button
+            type="button"
+            className={`button ${onlyLiked ? 'primary' : ''}`}
+            title="좋아요한 이벤트만 보기"
+            onClick={() => setOnlyLiked((v) => !v)}
+          >
+            좋아요만
+          </button>
         </div>
       </div>
 
@@ -283,7 +307,22 @@ const EventList = ({ refreshKey }: Props) => {
             style={{ textDecoration: 'none' }}
           >
             <div style={{ cursor: 'pointer' }}>
-              <EventCard event={ev} />
+              <EventCard
+                event={ev}
+                onLikeChanged={(next) => {
+                  setItems((prev) => {
+                    const updated = prev.map((x) =>
+                      x.event_id === ev.event_id
+                        ? { ...x, like_count: next.likeCount, is_liked: next.isLiked }
+                        : x
+                    );
+                    // If we're filtering liked=true server-side, immediately hide items that were unliked.
+                    return onlyLiked
+                      ? updated.filter((x) => x.is_liked === true)
+                      : updated;
+                  });
+                }}
+              />
             </div>
           </a>
         ))}

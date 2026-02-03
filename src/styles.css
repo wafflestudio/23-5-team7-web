@@ -28,6 +28,12 @@ body {
   z-index: 10;
 }
 
+.button-sm {
+  padding: 6px 10px;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
 .app-logo {
   appearance: none;
   border: 0;
@@ -55,10 +61,90 @@ body {
   padding: 40px;
 }
 
+.card-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: inherit;
+}
+
+.table-wrap {
+  max-height: 520px;
+  overflow: auto;
+}
+
+.rank-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rank-table th,
+.rank-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.rank-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 1;
+}
+
+.rank-table th:nth-child(1),
+.rank-table td:nth-child(1) {
+  text-align: center;
+}
+
+.rank-table th:nth-child(2),
+.rank-table td:nth-child(2) {
+  text-align: center;
+}
+
+.rank-table th:nth-child(3),
+.rank-table td:nth-child(3) {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 .container {
   max-width: 960px;
   margin: 0 auto;
   padding: 24px;
+}
+
+/* ===== Event detail layout (with sticky comments sidebar) ===== */
+.event-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 1024px) {
+  .event-detail-layout {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: start;
+    gap: 14px;
+  }
+}
+
+.event-detail-main {
+  min-width: 0;
+}
+
+.comments-sidebar {
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .comments-sidebar {
+    position: sticky;
+    top: 84px; /* below sticky header */
+    max-height: calc(100vh - 96px);
+    overflow: auto;
+    padding-bottom: 12px;
+  }
 }
 
 /* ===== Event detail (Polymarket-inspired) ===== */

@@ -8,8 +8,9 @@ export default defineConfig({
       '/api': {
         target: 'https://server.snutoto.o-r.kr',
         changeOrigin: true,
-        secure: true,
+        secure: false,
         followRedirects: true,
+        ws: true,
         // NOTE: Don't rewrite redirect Location headers here.
         // For OAuth flows, the backend must be able to redirect the browser to an absolute
         // frontend origin (e.g. http://localhost:5173/) after finishing authentication.

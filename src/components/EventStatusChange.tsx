@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { settleEvent, updateEventStatus } from '../api/events';
 import type { EventDetail, EventStatus } from '../types';
 
@@ -29,10 +29,12 @@ const EventStatusChange = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Keep local dropdown value in sync when event changes
-  useMemo(() => {
+  // Keep local UI state in sync when event changes
+  useEffect(() => {
     setStatus(event.status);
-  }, [event.status]);
+    setWinnerIds([]);
+    setError(null);
+  }, [event.event_id, event.status, mode]);
 
   const toggleWinner = (id: string) => {
     setWinnerIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));

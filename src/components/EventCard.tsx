@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { EventStatus, EventSummary } from '../types';
+import LikeButton from './LikeButton';
 
 const statusColors: Record<EventStatus, string> = {
   READY: '#6b7280', // gray
@@ -11,6 +12,7 @@ const statusColors: Record<EventStatus, string> = {
 
 interface Props {
   event: EventSummary;
+  onLikeChanged?: (next: { likeCount: number; isLiked: boolean | null }) => void;
 }
 
 const formatDateTime = (iso: string) =>
@@ -23,7 +25,7 @@ const formatDateTime = (iso: string) =>
     second: '2-digit',
   });
 
-const EventCard = ({ event }: Props) => {
+const EventCard = ({ event, onLikeChanged }: Props) => {
   const { title, status } = event;
   const description = event.description;
   const endIso = event.end_at;
@@ -74,13 +76,19 @@ const EventCard = ({ event }: Props) => {
   return (
     <article className="card">
       <header className="card-header">
-        <span
-          className="status-badge"
-          style={{ backgroundColor: statusColors[status] }}
-        >
+        <span className="status-badge" style={{ backgroundColor: statusColors[status] }}>
           {status}
         </span>
         <h2 className="card-title">{title}</h2>
+        <div style={{ marginLeft: 'auto' }}>
+          <LikeButton
+            size="sm"
+            eventId={event.event_id}
+            likeCount={event.like_count ?? 0}
+            isLiked={event.is_liked ?? null}
+            onChanged={onLikeChanged}
+          />
+        </div>
       </header>
 
       <div className="card-body">

@@ -30,6 +30,7 @@ export interface ListEventsResult {
 
 export interface ListEventsParams {
   status?: EventStatus;
+  liked?: boolean;
   cursor?: string;
   limit?: number;
 }
@@ -51,9 +52,10 @@ function toListEventsResult(res: unknown): ListEventsResult {
 }
 
 export async function listEvents(params: ListEventsParams = {}): Promise<ListEventsResult> {
-  const { status, cursor, limit } = params;
+  const { status, liked, cursor, limit } = params;
   const qs = new URLSearchParams();
   if (status) qs.set('status', status);
+  if (typeof liked === 'boolean') qs.set('liked', liked ? 'true' : 'false');
   if (cursor) qs.set('cursor', cursor);
   if (typeof limit === 'number') qs.set('limit', String(limit));
   const query = qs.toString();
@@ -119,11 +121,31 @@ export async function updateEventStatus(
 }
 
 export async function settleEvent(eventId: string, payload: SettleEventRequest) {
+  // Be defensive about backend field naming: spec uses winner_option_id (array),
+  // but some implementations may expect winner_option_ids.
+  const body = {
+    winner_option_id: payload.winner_option_id,
+    winner_option_ids: payload.winner_option_id,
+  };
   await request<void>(`/api/events/${encodeURIComponent(eventId)}/settle`, {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
   return getEvent(eventId);
+}
+
+// 8-1) POST /api/events/{event_id}/likes
+export function likeEvent(eventId: string) {
+  return request<unknown>(`/api/events/${encodeURIComponent(eventId)}/likes`, {
+    method: 'POST',
+  });
+}
+
+// 8-2) DELETE /api/events/{event_id}/likes
+export function unlikeEvent(eventId: string) {
+  return request<unknown>(`/api/events/${encodeURIComponent(eventId)}/likes`, {
+    method: 'DELETE',
+  });
 }
 
 // 3-1) POST /api/events/{event_id}/bets

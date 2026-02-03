@@ -7,14 +7,18 @@ import EventDetailPage from './components/EventDetailPage';
 import EventList from './components/EventList';
 import LoginModal from './components/LoginModal';
 import Modal from './components/Modal';
+import MyPage from './components/MyPage';
+import RankingPage from './components/RankingPage';
 import SignupModal from './components/SignupModal';
 import type { User } from './types';
+import { notifySessionChanged } from './auth/session';
 
 export default function App() {
   // --- Events UI state ---
   const [createOpen, setCreateOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [eventsRefreshKey, setEventsRefreshKey] = useState(0);
+  const [showRanking, setShowRanking] = useState(false);
 
   // --- Auth UI state ---
   const [showLogin, setShowLogin] = useState(false);
@@ -35,6 +39,9 @@ export default function App() {
     const apply = () => {
       const m = location.hash.match(/^#\/events\/(.+)$/);
       setDetailId(m ? m[1] : null);
+      setShowRanking(location.hash === '#/ranking');
+      // Any hash-route navigation should close the MyPage overlay.
+      if (location.hash) setShowMypage(false);
     };
     apply();
     window.addEventListener('hashchange', apply);
@@ -76,6 +83,7 @@ export default function App() {
     setIsLoggedIn(true);
     setUser(loggedInUser);
     localStorage.setItem('user', JSON.stringify(loggedInUser));
+    notifySessionChanged();
     setShowLogin(false);
     setIsGoogleCallback(false);
   };
@@ -84,6 +92,7 @@ export default function App() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
+    notifySessionChanged();
     setIsLoggedIn(false);
     setUser(null);
     setShowMypage(false);
@@ -141,13 +150,24 @@ export default function App() {
   return (
     <>
       <header className="app-header">
-        <button
-          className="app-logo"
-          type="button"
-          onClick={() => setShowMypage(false)}
-        >
-          스누토토
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            className="app-logo"
+            type="button"
+            onClick={() => setShowMypage(false)}
+          >
+            스누토토
+          </button>
+          <button
+            className="button ghost"
+            type="button"
+            onClick={() => {
+              location.hash = '#/ranking';
+            }}
+          >
+            랭킹
+          </button>
+        </div>
         <div className="app-auth">
           {isLoggedIn && user ? (
             <>
@@ -184,10 +204,17 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        {showMypage ? (
-          <div>
-            <h1>마이페이지</h1>
-            <p>여기에 사용자 정보를 표시합니다.</p>
+        {showRanking ? (
+          <div className="container">
+            <RankingPage
+              onBack={() => {
+                if (location.hash) location.hash = '';
+              }}
+            />
+          </div>
+        ) : showMypage ? (
+          <div className="container">
+            <MyPage onBack={() => setShowMypage(false)} />
           </div>
         ) : (
           <div className="container">

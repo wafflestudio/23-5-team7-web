@@ -112,6 +112,12 @@ function mapErrorMessage(status: number, body: unknown): string {
   if (status === 409 && code === 'ERR_013') return '이벤트가 OPEN 상태가 아닙니다. (베팅 불가)';
   if (status === 409 && code === 'ERR_014') return '이미 해당 이벤트에 베팅했습니다.';
 
+  // Step 7: Comments
+  if (status === 400 && code === 'ERR_048') return '댓글 내용은 공백만으로 작성할 수 없습니다.';
+  if (status === 404 && code === 'ERR_049') return '댓글을 찾을 수 없습니다.';
+  if (status === 403 && code === 'ERR_050') return '댓글 작성자만 수정/삭제할 수 있습니다.';
+  if (status === 404 && code === 'ERR_037') return '댓글 목록 커서가 유효하지 않습니다.';
+
   if (typeof msg === 'string' && msg.trim().length > 0) return msg;
   if (typeof body === 'string' && body.trim().length > 0) return body;
   return `요청이 실패했습니다 (HTTP ${status})`;

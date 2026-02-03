@@ -141,19 +141,19 @@ URL 파라미터로 `event_id`가 들어오며, 이벤트의 상태를 `"READY"`
 
 ### 2-3) POST `/api/events/{event_id}/settle` — 결과 정산 (로그인 필요)
 
-- 상태가 `"CLOSED"`인 이벤트에 대해 승리한 옵션의 ID를 지정하여 포인트를 정산합니다. 해당 이벤트는 `"SETTLED"` 상태가 됩니다.
+상태가 `"CLOSED"`인 이벤트에 대해 승리한 옵션의 ID를 지정하여 포인트를 정산합니다. 해당 이벤트는 `"SETTLED"` 상태가 됩니다.
 
-- **권한 검증**: 요청자에게 관리자 권한이 있어야 합니다.
+**권한 검증**: 요청자에게 관리자 권한이 있어야 합니다.
 
 - **요청**
     
     ```json
     {
-        "winner_option_id": ["opt-1-uuid...", ... ]
+        "winner_option_ids": ["opt-1-uuid...", ... ]
     }
     ```
     
-- **응답 (200)**
+- **응답 (200 OK)**
     
     ```json
     {
@@ -174,10 +174,11 @@ URL 파라미터로 `event_id`가 들어오며, 이벤트의 상태를 `"READY"`
     | 401 | `ERR_004` | UNAUTHENTICATED | Authorization 헤더가 없음 |
     | 401 | `ERR_005` | INVALID TOKEN | 유효하지 않거나 만료된 토큰 |
     | 404 | `ERR_009` | EVENT NOT FOUND | 이벤트를 찾을 수 없는 경우 |
+    | 403 | `ERR_030` | NOT ADMIN | 관리자가 아닌 유저가 요청 |
+    | 400 | `ERR_031` | INVALID WINNER OPTION | 승리 옵션 ID가 해당 이벤트의 옵션 목록에 없는 경우 |
     | 400 | `ERR_032` | NOT CLOSED | CLOSED가 아닌 이벤트에 대해 정산하려고 하는 경우 |
-    | 400 | `ERR_035` | INVALID WINNER OPTION | 승리 옵션 ID가 해당 이벤트의 옵션 목록에 없는 경우 |
 
-### 2-4) GET `/api/events/{event_id}` — 이벤트 상세 조회
+### 2-4-1) GET `/api/events/{event_id}` — 이벤트 상세 조회
 
 특정 이벤트의 상세 정보와 해당 이벤트에 포함된 모든 선택지(Options) 및 이미지 정보를 조회.
 
@@ -191,6 +192,15 @@ URL 파라미터로 `event_id`가 들어오며, 이벤트의 상태를 `"READY"`
 - **URL:** `/api/events/{event_id}`
 
 - **응답 (Response)**
+    - **추가된 내용:**  로그인 시 `is_liked` 포함, 비로그인 시 `null`
+        
+        **추가 필드:**
+        
+        - `like_count` (Integer): 이벤트의 총 좋아요 수 (실시간 COUNT 쿼리)
+        - `is_liked` (Boolean | null): 현재 로그인한 사용자의 좋아요 여부
+            - `true`: 좋아요를 누른 상태
+            - `false`: 좋아요를 누르지 않은 상태
+            - `null`: 비로그인 상태
 - **상태 코드:** `200 OK`
     
     ```json
@@ -201,6 +211,8 @@ URL 파라미터로 `event_id`가 들어오며, 이벤트의 상태를 `"READY"`
       "status": "OPEN",
       "total_participants": 50,
       "end_at": "2026-01-15T18:00:00",
+      "like_count": 42,
+      "is_liked": true,
       "options": [
         {
           "option_id": "opt-001",
@@ -226,9 +238,88 @@ URL 파라미터로 `event_id`가 들어오며, 이벤트의 상태를 `"READY"`
     | --- | --- | --- | --- |
     | 404 | `ERR_009` | `EVENT NOT FOUND` | **이벤트를 찾을 수 없는 경우** |
 
+### 2-4-2 )`/api/events/ws/{event_id}` —WebSocket API 실시간 배당률 업데이트 구독
+
+특정 이벤트의 배당률 변경사항을 실시간으로 수신합니다.
+
+**기능 설명**
+
+- WebSocket 연결을 통해 이벤트의 배당률 변경을 실시간으로 수신
+- 연결 즉시 초기 배당률 데이터를 전송
+- 베팅이 발생하여 배당률이 변경될 때마다 자동으로 업데이트 메시지 전송
+- 페이지를 떠나거나 연결을 끊을 때까지 지속적으로 연결 유지
+
+**요청**
+
+- **Protocol:** WebSocket
+- **URL:** ws://localhost:8000/api/events/ws/{event_id}
+- **경로 파라미터:**
+    - event_id (string, required): 구독할 이벤트의 고유 식별자
+
+**응답**
+
+- **1. 초기 배당률 데이터 (연결 직후)**
+
+```json
+{
+  "type": "initial",
+  "event_id": "7f1c5139-8e80-4d25-b123-446655440000",
+  "options": [
+    {
+      "option_id": "opt-001",
+      "name": "브라질",
+      "odds": 1.2
+    },
+    {
+      "option_id": "opt-002",
+      "name": "아르헨티나",
+      "odds": 2.5
+    }
+  ]
+}
+```
+
+- **배당률 업데이트 (베팅 발생 시)**
+
+```json
+{
+  "type": "odds_update",
+  "event_id": "7f1c5139-8e80-4d25-b123-446655440000",
+  "options": [
+    {
+      "option_id": "opt-001",
+      "odds": 1.15
+    },
+    {
+      "option_id": "opt-002",
+      "odds": 2.8
+    }
+  ]
+}
+```
+
+- **에러 상황 (WebSocket은 HTTP와 다른 프로토콜이므로 에러코드 분리)**
+
+| **상황** | **종료 코드** | **종료 이유 (reason)** | **관련 ERROR_CODE** |
+| --- | --- | --- | --- |
+| 존재하지 않는 event_id | `1008` | `EVENT NOT FOUND` | `ERR_009` |
+| 서버 내부 오류 | `1011` | Internal server error | - |
+| 네트워크 연결 끊김 | `1006` | - | - |
+- ***WebSocket 종료 코드**
+    
+    WebSocket 연결이 종료될 때 다음과 같은 종료 코드를 받습니다:
+    
+    | **종료 코드** | **상황** |
+    | --- | --- |
+    | `1000` | 정상 종료 (클라이언트가 ws.close() 호출) |
+    | `1001` | 페이지 이동, 브라우저 닫기 |
+    | `1006` | 비정상 종료 (네트워크 오류 등) |
+    | `1008` | 정책 위반 (존재하지 않는 event_id) |
+    | `1011` | 서버 내부 오류 |
+
 ### 2-5) GET `/api/events` — 이벤트 목록 조회
 
-전체 이벤트 목록을 커서 기반 페이지네이션으로 조회. `status` 쿼리 파라미터를 통해 특정 상태의 이벤트만 필터링
+전체 이벤트 목록을 커서 기반 페이지네이션으로 조회. `status, liked` 쿼리 파라미터를 통해 특정 상태 또는 좋아요한 이벤트만 필터링
 
 마감 임박순(`end_at` 오름차순)으로 정렬된 결과를 반환
 
@@ -247,6 +338,7 @@ URL 파라미터로 `event_id`가 들어오며, 이벤트의 상태를 `"READY"`
     | 파라미터 | 타입 | 필수 | 설명 | 기본값 | 제약사항 |
     | --- | --- | --- | --- | --- | --- |
     | `status` | string | ❌ | 이벤트 상태 필터 | - | `OPEN`, `CLOSED`, `SETTLED` 중 하나 |
+    | `liked` | boolean | ❌ | 좋아요한 이벤트만 필터링 | - | `true` of `false` |
     | `cursor` | string | ❌ | 페이지네이션 커서 (UUID)
      | - | 이전 응답의 `next_cursor` 값
     **Base64 encoded (end_at + event_id)** |
@@ -266,9 +358,24 @@ GET /api/events?status=OPEN&cursor=MjAyNi0wMS0xNVQxODowMDowMHw3ZjFjNTEzOS04ZTgwL
 
 # CLOSED 상태 이벤트 조회
 GET /api/events?status=CLOSED&limit=20
+
+# 내가 좋아요한 이벤트만 조회 (로그인 필수)
+GET /api/events?liked=true&limit=20
+
+# 좋아요한 OPEN 상태 이벤트만 조회
+GET /api/events?status=OPEN&liked=true&limit=10
 ```
 
 - **성공 응답**
+    - **추가된 내용:**  로그인 시 `is_liked` 포함, 비로그인 시 `null`
+        
+        **추가 필드:**
+        
+        - `like_count` (Integer): 이벤트의 총 좋아요 수 (실시간 COUNT 쿼리)
+        - `is_liked` (Boolean | null): 현재 로그인한 사용자의 좋아요 여부
+            - `true`: 좋아요를 누른 상태
+            - `false`: 좋아요를 누르지 않은 상태
+            - `null`: 비로그인 상태
     - 응답 필드 설명
     
     | 필드 | 타입 | 설명 |
@@ -288,6 +395,8 @@ GET /api/events?status=CLOSED&limit=20
         	    "status": "OPEN",
         	    "total_participants": 50,
         	    "end_at": "2026-01-15T18:00:00",
+        	    "like_count": 42,
+        		  "is_liked": true,
         	    "options": [
         	      { 
         	        "option_id": "opt-001", 
@@ -320,6 +429,8 @@ GET /api/events?status=CLOSED&limit=20
         	    "status": "OPEN",
         	    "total_participants": 50,
         	    "end_at": "2026-01-20T21:00:00",
+        	    "like_count": 42,
+        		  "is_liked": false,
         	    "options": [
         	      { 
         	        "option_id": "opt-101", 
@@ -366,39 +477,43 @@ GET /api/events?status=CLOSED&limit=20
 | 400 | `ERR_002` | INVALID FIELD FORMAT | `status` 값이 잘못됨 (OPEN, CLOSED, SETTLED가 아님) |
 | 422 | `ERR_036` | OUT_OF_RANGE | `limit` 값이 범위를 벗어남 (1-100) |
 | 404 | `ERR_037` | INVALID_CURSOR | `cursor`로 전달된 ID가 존재하지 않음 |
+| 422 | `ERR_036` | OUT_OF_RANGE | `limit` 값이 범위를 벗어남 (1-100) |
 
-### 3-1) POST `/api/events/{event_id}/bets` — 베팅 생성
+### 4-1) GET `/api/users/me/bets` — 내 베팅 상태 조회 (베팅 관리에 초점)
 
-사용자가 특정 이벤트의 옵션에 대해 베팅을 생성합니다.
+현재 로그인한 사용자의 전체 베팅 내역을 조회합니다.
 
-- **요청 (Request)**
-- **Method:** `POST`
-- **URL:** `/api/events/{event_id}/bets`
+- **URL:** `/api/users/me/bets`
+- **Method:** `GET`
 - **Headers:** `Authorization: Bearer {access_token}`
-- **Body:**
+- **Query Parameters (Optional):**
     
-    ```json
-    {
-      "option_id": "opt-001",
-      "bet_amount": 10000
-    }
-    ```
     
-
+    | **필드명** | **타입** | **필수** | **설명** | **기본값** |
+    | --- | --- | --- | --- | --- |
+    | `status` | String | N | 베팅 상태 필터 (`PENDING`, `WIN`, `LOSE`, `REFUNDED`) | - |
+    | `limit` | Integer | N | 한 페이지당 조회할 아이템 개수 | `20` |
+    | `offset` | Integer | N | 건너뛸 아이템 개수 (페이지네이션) | `0` |
+- **응답 (Response)**
 - **성공 응답**
-    - **상태 코드:** `201 Created`
+    - **상태 코드:** `200 OK`
     - **본문:**
         
         ```json
         {
-          "bet_id": "bet-7f1c5139-8e80-4d25-b123-446655440000",
-          "user_id": "user-123",
-          "event_id": "7f1c5139-8e80-4d25-b123-446655440000",
-          "option_id": "opt-001",
-          "option_name": "브라질",
-          "bet_amount": 10000,
-          "created_at": "2026-01-09T00:55:00",
-          "status": "PENDING"
+          "total_count": 3,
+          "bets": [
+            {
+              "bet_id": "bet-123",
+              "event_id": "ev-456",
+              "event_title": "2026 LCK 스프링 결승전 승리팀은?",
+              "option_id": "opt-001",
+              "option_name": "T1",
+              "amount": 10000,
+              "status": "PENDING",
+              "created_at": "2026-01-25T14:30:00"
+            }
+          ]
         }
         ```
         
@@ -407,10 +522,564 @@ GET /api/events?status=CLOSED&limit=20
     
     | **상태 코드** | **ERROR_CODE** | **ERROR_MSG** | **상황** |
     | --- | --- | --- | --- |
-    | 400 | `ERR_001` | `MISSING REQUIRED FIELDS` | 필수 필드(option_id, bet_amount)가 누락된 경우 |
-    | 400 | `ERR_002` | `INVALID FIELD FORMAT` | bet_amount가 양수가 아니거나 유효하지 않은 경우 |
-    | 400 | `ERR_011` | `INSUFFICIENT BALANCE` | 사용자의 잔액이 부족한 경우 |
-    | 404 | `ERR_009` | `EVENT NOT FOUND` | 이벤트를 찾을 수 없는 경우 |
-    | 404 | `ERR_012` | `OPTION NOT FOUND` | 선택한 옵션을 찾을 수 없는 경우 |
-    | 409 | `ERR_013` | `EVENT NOT OPEN` | 이벤트가 OPEN 상태가 아닌 경우 (베팅 불가) |
-    | 409 | `ERR_014` | `DUPLICATE BET` | 사용자가 이미 해당 이벤트에 베팅한 경우 |
+    | 400 | `ERR_003` | BAD AUTHORIZATION HEADER | Authorization 헤더 형식이 잘못됨 |
+    | 401 | `ERR_004` | UNAUTHENTICATED | Authorization 헤더가 없음 |
+    | 400 | `ERR_002` | INVALID FIELD FORMAT | 잘못된 쿼리 파라미터 형식 |
+    | 401 | `ERR_005` | INVALID TOKEN | 유효하지 않거나 만료된 토큰 (다시 로그인 필요) |
+
+### 4-2) GET `/api/users/me/point-history` - 내 포인트 내역 조회 (포인트 추적에 초점)
+
+- **요청 (Request)**
+
+| **필드명** | **타입** | **필수** | **설명** | **기본값** |
+| --- | --- | --- | --- | --- |
+| `reason` | String | N | point history와 연동된 필터 (`SIGNUP`, `BET`, `WIN`, `LOSE`, `REFUND`,`ETC`) | - |
+| `limit` | Integer | N | 한 페이지당 조회 개수 | 20 |
+| `offset` | Integer | N | 페이지네이션 오프셋 | 0 |
+- **응답 (Response)**
+- **성공 응답**
+    - **상태 코드:** `200 OK`
+    - **본문:**
+    
+    ```json
+    {
+      "current_balance": 125000,
+      "total_count": 3,
+      "history": [
+        {
+          "history_id": "poi-123",
+          "reason": "BET",
+          "change_amount": -10000,
+          "points_after": 115000,
+          "bet_id": "bet-456",
+          "event_id": "ev-789",
+          "event_title": "2026 LCK 스프링 결승전 승리팀은?",
+          "option_id": "opt-001",
+          "option_name": "T1",
+          "created_at": "2026-01-25T14:30:00"
+        },
+        {
+          "history_id": "poi-124",
+          "reason": "ETC",
+          "change_amount": 5000,
+          "points_after": 125000,
+          "bet_id": null,
+          "event_id": null,
+          "event_title": null,
+          "option_id": null,
+          "option_name": null,
+          "created_at": "2026-01-20T10:00:00"
+        }
+      ]
+    }
+    ```
+    
+- **실패 응답**
+    
+    
+    | **상태 코드** | **ERROR_CODE** | **ERROR_MSG** | **상황** |
+    | --- | --- | --- | --- |
+    | 400 | `ERR_003` | BAD AUTHORIZATION HEADER | Authorization 헤더 형식이 잘못됨 |
+    | 401 | `ERR_004` | UNAUTHENTICATED | Authorization 헤더가 없음 |
+    | 400 | `ERR_002` | INVALID FIELD FORMAT | 잘못된 쿼리 파라미터 형식 |
+    | 401 | `ERR_005` | INVALID TOKEN | 유효하지 않거나 만료된 토큰 (다시 로그인 필요) |
+
+### 4-3) GET`/api/users/me/profile` -내 프로필 조회
+
+- **응답 (Response)**
+- **성공 응답**
+    - **상태 코드:** `200 OK`
+    - **본문:**
+    
+    ```json
+    {
+      "user_id": "80b1696f-9fe8-4379-b1a9-64ef59c46625",
+      "email": "user1@snu.ac.kr",
+      "nickname": "베팅마스터",
+      "points": 85500,
+      "role": "USER",
+      "is_verified": true,
+      "is_snu_verified": true,
+      "social_type": "LOCAL",
+      "created_at": "2025-12-01T10:00:00+09:00"
+    }
+    ```
+    
+- **실패 응답**
+    
+    
+    | **상태 코드** | **에러 코드** | **메시지** | **상황** |
+    | --- | --- | --- | --- |
+    | 400 | `ERR_003` | BAD AUTHORIZATION HEADER | Authorization 헤더 형식이 잘못됨 |
+    | 401 | `ERR_004` | UNAUTHENTICATED | Authorization 헤더가 없음 |
+    | 401 | `ERR_005` | INVALID TOKEN | 유효하지 않거나 만료된 토큰 (다시 로그인 필요) |
+
+### 4-4) GET`/api/users/me/stats` - 내 통계(승률 등) 조회
+
+**요청 (Request) (따로 파라미터 없음)**
+
+- **Method:** `GET`
+- **URL:** `/api/users/me/stats`
+- **Headers:** `Authorization: Bearer {access_token}`
+
+**응답 (Response)**
+
+**성공 응답**
+
+- **상태 코드:** `200 OK`
+- **본문:**
+
+```json
+{
+  "points": {
+    "current_balance": 85500,
+    "total_earned": 250000,
+    "total_spent": 164500
+  },
+  "bets": {
+    "total_bets_count": 15,
+    "pending_count": 3,
+    "win_count": 8,
+    "lose_count": 4,
+    "refunded_count": 0,
+    "win_rate": 66.7
+  }
+}
+```
+
+- **참고: win_count + lose_count = 0 인 경우 → win_rate = 0.0 으로 처리**
+
+**실패 응답**
+
+| **상태 코드** | **에러 코드** | **메시지** | **상황** |
+| --- | --- | --- | --- |
+| 400 | `ERR_003` | BAD AUTHORIZATION HEADER | Authorization 헤더 형식이 잘못됨 |
+| 401 | `ERR_004` | UNAUTHENTICATED | Authorization 헤더가 없음 |
+| 401 | `ERR_005` | INVALID TOKEN | 유효하지 않거나 만료된 토큰 (다시 로그인 필요) |
+
+### 4-5) GET`/api/users/me/ranking`  -랭킹 조회 , 정각 갱신
+
+**랭킹 계산 방식 개요**
+
+- 배치 갱신 방식 (Scheduled Batch Update)
+    
+    **갱신 주기:**
+    
+    - 매시간 정각(00분)에 자동 갱신
+    - 서버 시작 시 즉시 1회 초기 실행
+    
+    **계산 방식:**
+    
+    1. 모든 사용자를 보유 포인트(points) 기준 내림차순 정렬
+    2. 순위(rank) 계산: 1위부터 순차 부여
+    3. 백분위(percentile) 계산: (total_users - rank + 1) / total_users * 100
+    4. Redis에 캐시 저장: user_ranking:{user_id} 키로 저장
+    5. TTL 설정: 다음 정각까지 유효 (동적 계산)
+
+**요청 (Request) (따로 파라미터 없음)**
+
+- **Method:** `GET`
+- **URL:** `/api/users/me/stats`
+- **Headers:** `Authorization: Bearer {access_token}`
+
+**응답 (Response)**
+
+**성공 응답**
+
+- **상태 코드:** `200 OK`
+- **본문:**
+
+```json
+{
+  "rank": 125,
+  "total_users": 1500,
+  "percentile": 8.3,
+  "my_points": 85500,
+}
+```
+
+- percentile: rank / total_users × 100
+
+**실패 응답**
+
+| **상태 코드** | **에러 코드** | **메시지** | **상황** |
+| --- | --- | --- | --- |
+| 400 | `ERR_003` | BAD AUTHORIZATION HEADER | Authorization 헤더 형식이 잘못됨 |
+| 401 | `ERR_004` | UNAUTHENTICATED | Authorization 헤더가 없음 |
+| 401 | `ERR_005` | INVALID TOKEN | 유효하지 않거나 만료된 토큰 (다시 로그인 필요) |
+
+### 4-6) PATCH `/api/users/me/nickname`
+
+- **요청 (Request)**
+    
+    
+    | **필드명** | **타입** | **필수** | **제약 사항** | **설명** |
+    | --- | --- | --- | --- | --- |
+    | **`nickname`** | String | **Y** | **2자 이상 20자 이하** | 변경할 닉네임 |
+    
+    ```json
+    {
+      "nickname": "베팅천재"
+    }
+    ```
+    
+- **성공 응답**
+    - **상태 코드:** `200 OK`
+    - **본문:**
+    
+    ```json
+    {
+      "message": "닉네임이 성공적으로 변경되었습니다.",
+      "nickname": "베팅천재"
+    }
+    ```
+    
+
+- **실패 응답**
+    
+    
+    | **상태 코드** | **에러 코드** | **메시지** | **상황** |
+    | --- | --- | --- | --- |
+    | 400 | ERR_002 | INVALID FIELD FORMAT | 닉네임이 너무 짧거나(2자 미만) 긴 경우(20자 초과) |
+    | 409 | ERR_007 | NICKNAME ALREADY EXISTS | 이미 존재하는 닉네임 |
+    | 400 | ERR_003 | BAD AUTHORIZATION HEADER | Authorization 헤더 형식이 잘못됨 |
+    | 401 | ERR_004 | UNAUTHENTICATED | Authorization 헤더가 없음 |
+    | 401 | ERR_005 | INVALID TOKEN | 유효하지 않거나 만료된 토큰 (다시 로그인 필요) |
+
+### 4-7) PATCH `/api/users/me/password`
+
+- 요청
+    
+    
+    | **필드명** | **타입** | **필수** | **제약 사항** | **설명** |
+    | --- | --- | --- | --- | --- |
+    | **`current_password`** | String | **Y** | - | 현재 사용 중인 비밀번호 |
+    | **`new_password`** | String | **Y** | **8자 이상 20자 이하** | 새롭게 설정할 비밀번호 |
+    - 요청 예시
+    
+    ```json
+    {
+      "current_password": "OldPassword123!",
+      "new_password": "NewPassword2026@"
+    }
+    ```
+    
+    - 응답 (Response)
+    - 성공 (200 OK)
+    
+    ```json
+    {
+      "message": "비밀번호가 성공적으로 변경되었습니다.",
+    }
+    ```
+    
+    - **실패 응답**
+        
+        
+        | **상태 코드** | **에러 코드** | **메시지** | **상황** |
+        | --- | --- | --- | --- |
+        | **400** | `ERR_002` | **INVALID_FIELD_FORMAT** | 비밀번호가 너무 짧거나(8자 미만) 긴 경우(20자 초과) |
+        | 401 | `ERR_014` | INVALID CREDENTIALS | 비밀번호가 틀린 경우 |
+        | 400 | `ERR_003` | BAD AUTHORIZATION HEADER | Authorization 헤더 형식이 잘못됨 |
+        | 401 | `ERR_004` | UNAUTHENTICATED | Authorization 헤더가 없음 |
+        | 401 | `ERR_005` | INVALID TOKEN | 유효하지 않거나 만료된 토큰 (다시 로그인 필요) |
+        | 400 | `ERR_047` | SOCIAL ACCOUNT NO PASSWORD | 소셜 로그인 계정은 비밀번호 변경 불가 |
+
+### 6-1) GET `/api/users/ranking` — 유저 랭킹 조회
+
+포인트 보유량이 높은 순서대로 유저 리스트를 반환합니다. 
+****
+
+- **요청**
+    - **쿼리 파라미터**
+        
+        
+        | 파라미터 | 타입 | 필수 | 설명 | 기본값 | 제약사항 |
+        | --- | --- | --- | --- | --- | --- |
+        | limit | integer | ❌ | 조회할 상위 유저 수 | 100 | 1 이상 1000 이하 |
+- **성공 응답 (200 OK)**
+    
+    ```json
+    {
+        "total_count": 100000,
+        "updated_at": "2026-01-30T03:54:25.989346",
+        "rankings": [
+            {
+                "rank": 1,
+                "nickname": "샤대토토왕",
+                "points": 50000
+            },
+            {
+                "rank": 2,
+                "nickname": "코딩하는곰",
+                "points": 45000
+            },
+            {
+                "rank": 3,
+                "nickname": "익명의고래",
+                "points": 12000
+            }
+        ]
+    }
+    ```
+    
+    **참고:** `total_count` 는 DB에 존재하는 전체 유저 수(탈퇴유저 제외)를 의미합니다.
+    
+- **실패 응답**
+    
+    
+    | **상태 코드** | **ERROR_CODE** | **ERROR_MSG** | **상황** |
+    | --- | --- | --- | --- |
+    | 400 | `ERR_002` | INVALID FIELD FORMAT | 필드 형식이 올바르지 않음 (이메일 형식 등) |
+
+### 7-1) POST `/api/events/{event_id}/comments` — 이벤트 댓글 작성 (websocket 사용 안함, 실시간성이 중요하지 않다 판단)
+
+특정 이벤트에 댓글을 작성
+
+**기능 설명**
+
+- 인증된 사용자만 댓글을 작성할 수 있습니다.
+- 댓글 내용은 공백을 제외하고 1자 이상 500자 이하여야 합니다.
+
+- 존재하는 이벤트에만 댓글을 작성할 수 있습니다.
+- 작성 시각은 서버 시간 기준으로 자동 설정됩니다.
+
+**요청 (Request)**
+
+- **Headers:** `Authorization: Bearer <JWT_TOKEN>`
+- **Body:**
+    
+    ```json
+    {
+      "content": "이번 경기는 공대가 이길 것 같아요!"
+    }
+    ```
+    
+
+**응답 (Response)**
+
+- **상태 코드:** `201 Created`
+    
+    ```json
+    {
+      "comment_id": "c1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+      "event_id": "7f1c5139-8e80-4d25-b123-446655440000",
+      "user_id": "u1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+      "nickname": "토토왕",
+      "content": "이번 경기는 공대가 이길 것 같아요!",
+      "created_at": "2026-01-30T10:30:00Z",
+      "updated_at": null
+    }
+    ```
+    
+
+**실패 응답**
+
+| **상태 코드** | **ERROR_CODE** | **ERROR_MSG** | **상황** |
+| --- | --- | --- | --- |
+| 400 | `ERR_001` | `MISSING REQUIRED FIELDS` | content 필드가 누락됨 |
+| 400 | `ERR_002` | `INVALID FIELD FORMAT` | content가 1자 미만이거나 500자 초과 |
+| 400 | `ERR_048` | `EMPTY COMMENT CONTENT` | 댓글 내용이 공백만으로 구성됨 |
+| 401 | `ERR_004` | `UNAUTHENTICATED` | Authorization 헤더가 없음 |
+| 401 | `ERR_005` | `INVALID TOKEN` | 유효하지 않거나 만료된 토큰 |
+| 404 | `ERR_009` | `EVENT NOT FOUND` | 이벤트를 찾을 수 없음 |
+
+### 7-2) **GET `/api/events/{event_id}/comments` — 댓글 목록 조회**
+
+특정 이벤트의 댓글 목록을 커서 기반 **페이지네이션**으로 조회합니다.
+
+**기능 설명**
+
+- 인증 없이 누구나 댓글 목록을 조회할 수 있습니다.
+- 최신 댓글이 먼저 표시됩니다 (created_at DESC, comment_id DESC).
+- 복합 커서 기반 페이지네이션을 사용하여 정확하고 효율적으로 대량의 댓글을 조회합니다.
+- 커서는 {created_at}_{comment_id} 형식을 Base64로 인코딩하여 불투명한 토큰으로 제공됩니다.
+- 각 댓글에는 작성자의 닉네임이 포함됩니다.
+
+**요청 (Request)**
+
+- **Query Parameters:**
+    - cursor (String, Optional): 다음 페이지를 가져오기 위한 Base64 인코딩된 커서
+    - limit (Integer, Optional, Default: 20): 한 번에 가져올 댓글 수 (1~100)
+
+**응답 (Response)**
+
+- **상태 코드:** `200 OK`
+    
+    ```json
+    {
+      "comments": [
+        {
+          "comment_id": "c3a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+          "event_id": "7f1c5139-8e80-4d25-b123-446655440000",
+          "user_id": "u1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+          "nickname": "토토왕",
+          "content": "이번 경기는 공대가 이길 것 같아요!",
+          "created_at": "2026-01-30T10:30:00Z",
+          "updated_at": null
+        },
+        {
+          "comment_id": "c2a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+          "event_id": "7f1c5139-8e80-4d25-b123-446655440000",
+          "user_id": "u2a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+          "nickname": "베팅마스터",
+          "content": "자연대도 가능성 있어 보입니다.",
+          "created_at": "2026-01-30T09:15:00Z",
+          "updated_at": "2026-01-30T09:20:00Z"
+        }
+      ],
+      "next_cursor": "MjAyNi0wMS0zMFQwOToxNTowMFpfYzJhMmIzYzQtZDVlNi03ZjhnLTloMGktMWoyazNsNG01bjZv",
+      "has_more": true
+    }
+    ```
+    
+
+**실패 응답**
+
+| **상태 코드** | **ERROR_CODE** | **ERROR_MSG** | **상황** |
+| --- | --- | --- | --- |
+| 400 | `ERR_002` | INVALID FIELD FORMAT | limit이 1~100 범위를 벗어남 |
+| 404 | `ERR_037` | INVALID_CURSOR | `cursor` 가 유효하지 않은 경우 |
+| 404 | `ERR_009` | EVENT NOT FOUND | 이벤트를 찾을 수 없는 경우 |
+
+### **7-3) PATCH `/api/comments/{comment_id}` — 댓글 수정**
+
+자신이 작성한 댓글의 내용을 수정합니다.
+
+**기능 설명**
+
+- 댓글 작성자 본인만 수정할 수 있습니다.
+- 수정된 내용도 1자 이상 500자 이하여야 합니다.
+- 수정 시각(updated_at)이 서버 시간 기준으로 자동 업데이트됩니다.
+- 관리자라도 타인의 댓글 내용을 수정할 수 없습니다 (삭제만 가능).
+
+**요청 (Request)**
+
+- **Headers:** `Authorization: Bearer <JWT_TOKEN>`
+- **Body:**
+    
+    ```json
+    {
+      "content": "수정된 댓글 내용입니다."
+    }
+    ```
+    
+
+**응답 (Response)**
+
+- **상태 코드:** `200 OK`
+    
+    ```json
+    {
+      "comment_id": "c1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+      "event_id": "7f1c5139-8e80-4d25-b123-446655440000",
+      "user_id": "u1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+      "nickname": "토토왕",
+      "content": "수정된 댓글 내용입니다.",
+      "created_at": "2026-01-30T10:30:00Z",
+      "updated_at": "2026-01-30T11:00:00Z"
+    }
+    ```
+    
+
+**실패 응답**
+
+| **상태 코드** | **ERROR_CODE** | **ERROR_MSG** | **상황** |
+| --- | --- | --- | --- |
+| 400 | `ERR_001` | `MISSING REQUIRED FIELDS` | content 필드가 누락됨 |
+| 400 | `ERR_002` | `INVALID FIELD FORMAT` | content가 1자 미만이거나 500자 초과 |
+| 400 | `ERR_048` | `EMPTY COMMENT CONTENT` | 댓글 내용이 공백만으로 구성됨 |
+| 401 | `ERR_004` | `UNAUTHENTICATED` | Authorization 헤더가 없음 |
+| 401 | `ERR_005` | `INVALID TOKEN` | 유효하지 않거나 만료된 토큰 |
+| 404 | `ERR_049` | `COMMENT NOT FOUND` | 댓글을 찾을 수 없음 |
+| 403 | `ERR_050` | `NOT COMMENT OWNER` | 댓글 작성자가 아님 |
+
+### 7-4) **DELETE `/api/comments/{comment_id}` — 댓글 삭제**
+
+댓글을 삭제합니다.
+
+**기능 설명**
+
+- 댓글 작성자 본인만 삭제할 수 있습니다.
+- 관리자(ADMIN)는 모든 댓글을 삭제할 수 있습니다.
+- 데이터베이스에서 완전히 삭제됩니다 (Soft Delete 없음).
+- 삭제된 댓글은 복구할 수 없습니다.
+
+**요청 (Request)**
+
+- **Headers:** `Authorization: Bearer <JWT_TOKEN>`
+
+**응답 (Response)**
+
+- **상태 코드:** `204 No Content`
+
+**실패 응답**
+
+| **상태 코드** | **ERROR_CODE** | **ERROR_MSG** | **상황** |
+| --- | --- | --- | --- |
+| 401 | `ERR_004` | `UNAUTHENTICATED` | Authorization 헤더가 없음 |
+| 401 | `ERR_005` | `INVALID TOKEN` | 유효하지 않거나 만료된 토큰 |
+| 404 | `ERR_049` | `COMMENT NOT FOUND` | 댓글을 찾을 수 없음 |
+| 403 | `ERR_050` | `NOT COMMENT OWNER` | 댓글 작성자도 아니고 관리자도 아님 |
+
+### 8-1) **POST `/api/events/{event_id}/likes` — 좋아요 추가**
+
+로그인한 사용자가 특정 이벤트에 좋아요를 추가
+
+**요청**
+
+- Path Parameter: event_id (String)
+- Header: `Authorization: Bearer <access_token>`
+- Request Body: 없음
+
+**성공 응답**
+
+```json
+{
+    "like_id": "a1b2c3d4-5e6f-7g8h-9i0j-k1l2m3n4o5p6",
+    "event_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "user_id": "7ca32b1a-1234-4567-8901-abcdef123456",
+    "created_at": "2026-01-30T10:30:00Z"
+}
+```
+
+**실패 응답:**
+
+| 상태 코드 | ERROR_CODE | ERROR_MSG | 상황 |
+| --- | --- | --- | --- |
+| 400 | `ERR_003` | BAD AUTHORIZATION HEADER | Authorization 헤더 형식이 잘못됨 |
+| 401 | `ERR_004` | UNAUTHENTICATED | Authorization 헤더가 없음 |
+| 401 | `ERR_005` | INVALID TOKEN | 유효하지 않거나 만료된 토큰 |
+| 404 | `ERR_009` | EVENT NOT FOUND | 해당 이벤트가 존재하지 않음 |
+| 409 | `ERR_052` | LIKE ALREADY EXISTS | 이미 좋아요를 누른 이벤트 |
+
+### 8-2) **DELETE `/api/events/{event_id}/likes` — 좋아요 취소**
+
+로그인한 사용자가 특정 이벤트의 좋아요를 취소
+
+**좋아요 레코드는 DB에서 완전히 삭제**
+
+**요청:**
+
+- Path Parameter: event_id (String)
+- Header: `Authorization: Bearer <access_token>`
+- Request Body: 없음
+
+**성공 응답 (200 OK):**
+
+```json
+{
+    "message": "좋아요가 취소되었습니다.",
+    "event_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+}
+```
+
+**실패 응답:**
+
+| 상태 코드 | ERROR_CODE | ERROR_MSG | 상황 |
+| --- | --- | --- | --- |
+| 400 | `ERR_003` | BAD AUTHORIZATION HEADER | Authorization 헤더 형식이 잘못됨 |
+| 401 | `ERR_004` | UNAUTHENTICATED | Authorization 헤더가 없음 |
+| 401 | `ERR_005` | INVALID TOKEN | 유효하지 않거나 만료된 토큰 |
+| 404 | `ERR_009` | EVENT NOT FOUND | 해당 이벤트가 존재하지 않음 |
+| 404 | `ERR_053` | LIKE NOT FOUND | 좋아요를 누르지 않은 이벤트 |
