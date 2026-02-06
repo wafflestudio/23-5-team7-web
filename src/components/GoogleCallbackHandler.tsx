@@ -84,9 +84,12 @@ export default function GoogleCallbackHandler({
 async function fetchUserInfo(): Promise<User | null> {
   try {
     // Try to get user info from /api/users/me/profile endpoint
-    const response = await fetch('/api/users/me/profile', {
-      credentials: 'include', // Include cookies
-    });
+    const response = await fetch(
+      'https://server.snutoto.o-r.kr/api/users/me/profile',
+      {
+        credentials: 'include', // Include cookies
+      }
+    );
 
     if (!response.ok) {
       return null;
