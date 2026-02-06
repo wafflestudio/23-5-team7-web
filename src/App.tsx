@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import logoPng from './assets/logo.png';
 import { notifySessionChanged } from './auth/session';
 import { startTokenManager } from './auth/tokenManager';
 import EmailVerifyModal from './components/EmailVerifyModal';
@@ -12,7 +13,6 @@ import Modal from './components/Modal';
 import MyPage from './components/MyPage';
 import RankingPage from './components/RankingPage';
 import SignupModal from './components/SignupModal';
-import logoPng from './assets/logo.png';
 import type { User } from './types';
 
 export default function App() {
@@ -318,13 +318,23 @@ export default function App() {
 
       {needVerify && (
         <Modal onClose={() => setNeedVerify(false)}>
-          <EmailVerifyModal onSuccess={() => setNeedVerify(false)} />
+          <EmailVerifyModal
+            onSuccess={() => {
+              setNeedVerify(false);
+              // Users are blocked from logging in until verified, so bring them back to login.
+              setShowLogin(true);
+            }}
+          />
         </Modal>
       )}
 
       {showGoogleCallback && (
         <GoogleCallbackHandler
           onLoginSuccess={handleLoginSuccess}
+          onNeedVerify={() => {
+            setShowGoogleCallback(false);
+            setNeedVerify(true);
+          }}
           onNeedSignup={(data) => {
             setGoogleSignupData(data);
             setShowGoogleCallback(false);
@@ -348,6 +358,10 @@ export default function App() {
             email={googleSignupData.email}
             socialId={googleSignupData.social_id}
             socialType={googleSignupData.social_type}
+            onNeedVerify={() => {
+              setShowGoogleSignup(false);
+              setNeedVerify(true);
+            }}
           />
         </Modal>
       )}

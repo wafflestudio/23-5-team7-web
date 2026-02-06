@@ -29,6 +29,10 @@ export default function EmailVerifyModal({
         <p className="page-sub" style={{ marginTop: 0 }}>
           가입한 이메일로 받은 6자리 코드를 입력하세요.
         </p>
+        <p className="page-sub" style={{ marginTop: 0 }}>
+          인증 토큰은 15분 후 만료돼요. 만료됐다면 다시 로그인 시도 후 인증을
+          진행해주세요.
+        </p>
 
         <div className="modal-footer" style={{ justifyContent: 'flex-start' }}>
           <button
@@ -75,12 +79,15 @@ export default function EmailVerifyModal({
               setInfo(null);
               try {
                 await confirmVerificationCode(code.trim());
-                setInfo('인증이 완료되었습니다. 다시 로그인해주세요.');
+                localStorage.removeItem('verification_token');
+                setInfo('인증이 완료되었습니다. 이제 로그인할 수 있어요.');
                 onSuccess?.();
               } catch (e) {
                 const err = e as AxiosError<{ error_code?: string }>;
                 if (err.response?.data?.error_code === 'ERR_012') {
                   setError('인증번호가 올바르지 않아요. 다시 확인해주세요.');
+                } else if (err.response?.data?.error_code === 'ERR_016') {
+                  setError('인증 토큰이 만료되었어요. 다시 로그인해 주세요.');
                 } else {
                   setError('인증에 실패했어요. 잠시 후 다시 시도해주세요.');
                 }

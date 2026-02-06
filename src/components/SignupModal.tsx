@@ -45,7 +45,9 @@ export default function SignupModal({ onSignupSuccess, onNeedVerify }: Props) {
       const token = (res.data as { verification_token?: string })
         ?.verification_token;
       if (token) localStorage.setItem('verification_token', token);
-      setInfo('회원가입 완료! 이메일 인증을 진행해주세요.');
+      setInfo(
+        '회원가입 완료! 15분 안에 스누메일 인증을 완료해야 로그인할 수 있어요.'
+      );
       onSignupSuccess?.();
       onNeedVerify?.();
     } catch (e) {

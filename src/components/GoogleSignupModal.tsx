@@ -9,12 +9,14 @@ interface Props {
   socialType: string;
   // onSignupSuccess will be used in the future for better UX
   onSignupSuccess?: (user: User) => void;
+  onNeedVerify?: () => void;
 }
 
 export default function GoogleSignupModal({
   email,
   socialId,
   socialType,
+  onNeedVerify,
 }: Props) {
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
@@ -35,21 +37,17 @@ export default function GoogleSignupModal({
     setError('');
 
     try {
-      await signup({
+      const res = await signup({
         email,
         nickname: nickname.trim(),
         social_type: socialType as 'LOCAL' | 'GOOGLE' | 'KAKAO',
         social_id: socialId,
       });
 
-      // After signup, we need to handle verification
-      // For Google users, they might already be verified
-      alert('회원가입 완료! 이메일 인증을 진행해주세요.');
-
-      // Note: The API returns user data on successful signup
-      // But Google users need email verification before they can fully login
-      // So we'll close this modal and show the verify modal
-      window.location.reload();
+      const token = (res.data as { verification_token?: string })
+        ?.verification_token;
+      if (token) localStorage.setItem('verification_token', token);
+      onNeedVerify?.();
     } catch (err) {
       const error = err as AxiosError<{
         error_code?: string;

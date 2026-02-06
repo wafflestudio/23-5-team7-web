@@ -8,12 +8,14 @@ interface Props {
     social_id: string;
     social_type: string;
   }) => void;
+  onNeedVerify?: () => void;
   onError: (message: string) => void;
 }
 
 export default function GoogleCallbackHandler({
   onLoginSuccess,
   onNeedSignup,
+  onNeedVerify,
   onError,
 }: Props) {
   useEffect(() => {
@@ -25,7 +27,17 @@ export default function GoogleCallbackHandler({
 
     // Handle error case
     if (error) {
-      onError(errorMsg || '구글 로그인에 실패했습니다.');
+      // If backend returns a verification token, users need to verify before logging in.
+      const code = params.get('error_code');
+      const verificationToken = params.get('verification_token');
+      if (code === 'ERR_015' || verificationToken) {
+        if (verificationToken) {
+          localStorage.setItem('verification_token', verificationToken);
+        }
+        onNeedVerify?.();
+      } else {
+        onError(errorMsg || '구글 로그인에 실패했습니다.');
+      }
       // Clear query params
       window.history.replaceState({}, '', window.location.pathname);
       return;
@@ -72,7 +84,7 @@ export default function GoogleCallbackHandler({
           window.history.replaceState({}, '', window.location.pathname);
         });
     }
-  }, [onLoginSuccess, onNeedSignup, onError]);
+  }, [onLoginSuccess, onNeedSignup, onNeedVerify, onError]);
 
   return (
     <div style={{ padding: '40px', textAlign: 'center' }}>
