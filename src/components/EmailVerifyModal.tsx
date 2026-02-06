@@ -1,8 +1,23 @@
-import { useState } from 'react';
+import { AxiosError } from 'axios';
+import { useMemo, useState } from 'react';
 import { confirmVerificationCode, sendVerificationMail } from '../api/auth';
 
-export default function EmailVerifyModal() {
+export default function EmailVerifyModal({
+  onSuccess,
+}: {
+  onSuccess?: () => void;
+}) {
   const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+
+  const canSubmit = useMemo(() => {
+    if (loading) return false;
+    const c = code.trim();
+    if (!/^\d{6}$/.test(c)) return false;
+    return true;
+  }, [code, loading]);
 
   return (
     <div>
@@ -18,7 +33,18 @@ export default function EmailVerifyModal() {
         <div className="modal-footer" style={{ justifyContent: 'flex-start' }}>
           <button
             className="button"
-            onClick={sendVerificationMail}
+            onClick={async () => {
+              setError(null);
+              setInfo(null);
+              try {
+                await sendVerificationMail();
+                setInfo('인증번호를 전송했어요. 메일함을 확인해주세요.');
+              } catch {
+                setError(
+                  '인증번호 전송에 실패했어요. 잠시 후 다시 시도해주세요.'
+                );
+              }
+            }}
             type="button"
           >
             인증번호 발송 / 재전송
@@ -32,6 +58,7 @@ export default function EmailVerifyModal() {
             className="input"
             placeholder="123456"
             inputMode="numeric"
+            value={code}
             onChange={(e) => setCode(e.target.value)}
           />
         </div>
@@ -40,14 +67,34 @@ export default function EmailVerifyModal() {
           <button
             className="button primary"
             type="button"
+            disabled={!canSubmit}
             onClick={async () => {
-              await confirmVerificationCode(code);
-              alert('인증 완료. 다시 로그인하세요.');
+              if (!canSubmit) return;
+              setLoading(true);
+              setError(null);
+              setInfo(null);
+              try {
+                await confirmVerificationCode(code.trim());
+                setInfo('인증이 완료되었습니다. 다시 로그인해주세요.');
+                onSuccess?.();
+              } catch (e) {
+                const err = e as AxiosError<{ error_code?: string }>;
+                if (err.response?.data?.error_code === 'ERR_012') {
+                  setError('인증번호가 올바르지 않아요. 다시 확인해주세요.');
+                } else {
+                  setError('인증에 실패했어요. 잠시 후 다시 시도해주세요.');
+                }
+              } finally {
+                setLoading(false);
+              }
             }}
           >
-            인증 확인
+            {loading ? '확인 중…' : '인증 확인'}
           </button>
         </div>
+
+        {error ? <p className="form-error">{error}</p> : null}
+        {info ? <p className="form-info">{info}</p> : null}
       </div>
     </div>
   );

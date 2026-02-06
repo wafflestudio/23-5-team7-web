@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { notifySessionChanged } from './auth/session';
+import { startTokenManager } from './auth/tokenManager';
 import EmailVerifyModal from './components/EmailVerifyModal';
 import EventCreateModal from './components/EventCreateModal';
 import EventDetailPage from './components/EventDetailPage';
@@ -11,6 +12,7 @@ import Modal from './components/Modal';
 import MyPage from './components/MyPage';
 import RankingPage from './components/RankingPage';
 import SignupModal from './components/SignupModal';
+import logoPng from './assets/logo.png';
 import type { User } from './types';
 
 export default function App() {
@@ -43,8 +45,9 @@ export default function App() {
       const m = location.hash.match(/^#\/events\/(.+)$/);
       setDetailId(m ? m[1] : null);
       setShowRanking(location.hash === '#/ranking');
+      setShowMypage(location.hash === '#/mypage');
       // Any hash-route navigation should close the MyPage overlay.
-      if (location.hash) setShowMypage(false);
+      if (location.hash && location.hash !== '#/mypage') setShowMypage(false);
     };
     apply();
     window.addEventListener('hashchange', apply);
@@ -63,6 +66,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // Keep session alive while the user is active, and auto-logout after 15 minutes inactivity.
+    startTokenManager();
+
     // Check for existing login session
     const checkAuth = async () => {
       try {
@@ -141,14 +147,24 @@ export default function App() {
           <button
             className="app-logo"
             type="button"
-            onClick={() => setShowMypage(false)}
+            onClick={() => {
+              setShowMypage(false);
+              setShowRanking(false);
+              // Go back to event list when clicking the logo
+              if (location.hash) location.hash = '';
+            }}
           >
-            스누토토
+            <img
+              src={logoPng}
+              alt="스누토토"
+              style={{ height: 28, width: 'auto', display: 'block' }}
+            />
           </button>
           <button
             className="button ghost"
             type="button"
             onClick={() => {
+              setShowMypage(false);
               location.hash = '#/ranking';
             }}
           >
@@ -161,7 +177,9 @@ export default function App() {
               <button
                 className="button ghost"
                 type="button"
-                onClick={() => setShowMypage(true)}
+                onClick={() => {
+                  location.hash = '#/mypage';
+                }}
               >
                 {user.nickname}님 mypage
               </button>
@@ -201,7 +219,12 @@ export default function App() {
           </div>
         ) : showMypage ? (
           <div className="container">
-            <MyPage onBack={() => setShowMypage(false)} />
+            <MyPage
+              onBack={() => {
+                if (location.hash) location.hash = '';
+                setShowMypage(false);
+              }}
+            />
           </div>
         ) : (
           <div className="container">
@@ -283,13 +306,19 @@ export default function App() {
 
       {showSignup && (
         <Modal onClose={() => setShowSignup(false)}>
-          <SignupModal />
+          <SignupModal
+            onSignupSuccess={() => setShowSignup(false)}
+            onNeedVerify={() => {
+              setShowSignup(false);
+              setNeedVerify(true);
+            }}
+          />
         </Modal>
       )}
 
       {needVerify && (
         <Modal onClose={() => setNeedVerify(false)}>
-          <EmailVerifyModal />
+          <EmailVerifyModal onSuccess={() => setNeedVerify(false)} />
         </Modal>
       )}
 

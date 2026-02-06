@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { EventStatus, EventSummary } from '../types';
+import {
+  computeTimeLabels,
+  formatDateTimeKo,
+  safeParseDate,
+} from '../utils/time';
 import LikeButton from './LikeButton';
 
 const statusColors: Record<EventStatus, string> = {
@@ -18,29 +23,20 @@ interface Props {
   }) => void;
 }
 
-const formatDateTime = (iso: string) =>
-  new Date(iso).toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-
 const EventCard = ({ event, onLikeChanged }: Props) => {
   const { title, status } = event;
   const description = event.description;
   const endIso = event.end_at;
   const startIso =
-    'start_at' in event && typeof event.start_at === 'string'
-      ? String(event.start_at)
-      : new Date(
-          new Date(endIso).getTime() - 24 * 60 * 60 * 1000
-        ).toISOString();
+    typeof event.start_at === 'string' && event.start_at
+      ? event.start_at
+      : endIso;
 
-  const start = useMemo(() => new Date(startIso), [startIso]);
-  const end = useMemo(() => new Date(endIso), [endIso]);
+  const start = useMemo(
+    () => safeParseDate(startIso) ?? new Date(0),
+    [startIso]
+  );
+  const end = useMemo(() => safeParseDate(endIso) ?? new Date(0), [endIso]);
 
   const [now, setNow] = useState<Date>(new Date());
 
@@ -55,27 +51,12 @@ const EventCard = ({ event, onLikeChanged }: Props) => {
     Math.max(0, now.getTime() - start.getTime()),
     totalMs
   );
-  const remainingMs = Math.max(0, end.getTime() - now.getTime());
   const progress = totalMs === 0 ? 100 : (elapsedMs / totalMs) * 100;
 
-  const remainingLabel = useMemo(() => {
-    if (!isFinite(remainingMs)) return '-';
-    const totalMinutes = Math.ceil(remainingMs / (60 * 1000));
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    if (hours <= 0) return `${minutes}분 남음`;
-    return `약 ${hours}시간 ${minutes}분 남음`;
-  }, [remainingMs]);
-
-  const untilStartMs = Math.max(0, start.getTime() - now.getTime());
-  const untilStartLabel = useMemo(() => {
-    if (!isFinite(untilStartMs)) return '-';
-    const totalMinutes = Math.ceil(untilStartMs / (60 * 1000));
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    if (hours <= 0) return `${minutes}분 남음`;
-    return `약 ${hours}시간 ${minutes}분 남음`;
-  }, [untilStartMs]);
+  const { remainingLabel, untilStartLabel } = useMemo(
+    () => computeTimeLabels({ startIso, endIso, now }),
+    [endIso, now, startIso]
+  );
 
   const progressLabel = `${Math.round(progress)}%`;
 
@@ -109,7 +90,9 @@ const EventCard = ({ event, onLikeChanged }: Props) => {
               className="progress-label"
               style={{ textAlign: 'center', fontSize: '1.5em' }}
             >
-              시작까지 {untilStartLabel}
+              {event.is_eligible === false
+                ? '좋아요를 모아 이벤트를 오픈하세요!'
+                : `시작까지 ${untilStartLabel}`}
             </div>
           ) : (
             <>
@@ -139,8 +122,8 @@ const EventCard = ({ event, onLikeChanged }: Props) => {
                   />
                 </div>
                 <div className="progress-tooltip" aria-hidden="true">
-                  <div>시작: {formatDateTime(startIso)}</div>
-                  <div>종료: {formatDateTime(endIso)}</div>
+                  <div>시작: {formatDateTimeKo(startIso)}</div>
+                  <div>종료: {formatDateTimeKo(endIso)}</div>
                 </div>
               </div>
             </>

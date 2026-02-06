@@ -239,7 +239,12 @@ export default function CommentsSection({ eventId }: Props) {
             }
             rows={3}
             disabled={!isLoggedIn || posting}
-            style={{ width: '100%', resize: 'vertical' }}
+            style={{
+              width: '100%',
+              resize: 'vertical',
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
+            }}
           />
           <div
             style={{
@@ -339,7 +344,14 @@ export default function CommentsSection({ eventId }: Props) {
                   </div>
 
                   {!isEditing ? (
-                    <p style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>
+                    <p
+                      style={{
+                        marginTop: 8,
+                        whiteSpace: 'pre-wrap',
+                        overflowWrap: 'anywhere',
+                        wordBreak: 'break-word',
+                      }}
+                    >
                       {c.content}
                     </p>
                   ) : (
@@ -348,7 +360,12 @@ export default function CommentsSection({ eventId }: Props) {
                         value={editingContent}
                         onChange={(e) => setEditingContent(e.target.value)}
                         rows={3}
-                        style={{ width: '100%', resize: 'vertical' }}
+                        style={{
+                          width: '100%',
+                          resize: 'vertical',
+                          overflowWrap: 'anywhere',
+                          wordBreak: 'break-word',
+                        }}
                       />
                       <div
                         style={{

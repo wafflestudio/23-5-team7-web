@@ -13,26 +13,49 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
   const [startAt, setStartAt] = useState(''); // datetime-local
   const [endAt, setEndAt] = useState(''); // datetime-local
   const [eventImages, setEventImages] = useState<FileList | null>(null);
-  const [optionImages, setOptionImages] = useState<FileList | null>(null);
   const [options, setOptions] = useState<
-    Array<{ name: string; option_image_index: number }>
-  >([{ name: '', option_image_index: -1 }]);
+    Array<{ name: string; option_image_files: File[] }>
+  >([{ name: '', option_image_files: [] }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  const nowLocal = new Date();
+  const minStartLocal = new Date(nowLocal.getTime() + 60_000)
+    .toISOString()
+    .slice(0, 16);
+
   const addOption = () =>
-    setOptions((prev) => [...prev, { name: '', option_image_index: -1 }]);
+    setOptions((prev) => [...prev, { name: '', option_image_files: [] }]);
   const removeOption = (idx: number) =>
     setOptions((prev) => prev.filter((_, i) => i !== idx));
   const updateOptionName = (idx: number, val: string) =>
     setOptions((prev) =>
       prev.map((v, i) => (i === idx ? { ...v, name: val } : v))
     );
-  const updateOptionImageIndex = (idx: number, val: number) =>
+
+  const addOptionImage = (idx: number, files: FileList | null) => {
+    if (!files || files.length === 0) return;
     setOptions((prev) =>
-      prev.map((v, i) => (i === idx ? { ...v, option_image_index: val } : v))
+      prev.map((v, i) =>
+        i === idx
+          ? {
+              ...v,
+              option_image_files: [
+                ...v.option_image_files,
+                ...Array.from(files),
+              ],
+            }
+          : v
+      )
     );
+  };
+
+  const clearOptionImages = (idx: number) => {
+    setOptions((prev) =>
+      prev.map((v, i) => (i === idx ? { ...v, option_image_files: [] } : v))
+    );
+  };
 
   const toISO = (dt: string) => {
     // NOTE: <input type="datetime-local"> gives a local datetime string like "2026-01-17T20:30".
@@ -68,8 +91,11 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
       }
 
       const optionImageBaseIndex = imageFiles.length;
-      for (const f of Array.from(optionImages ?? [])) {
-        imageFiles.push(f);
+      // Flatten option images in option order (their indices are derived from this order)
+      for (const opt of options) {
+        for (const f of opt.option_image_files ?? []) {
+          imageFiles.push(f);
+        }
       }
 
       // ===== Client-side validation (mirrors README constraints) =====
@@ -81,7 +107,7 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
       const normalizedOptions = options
         .map((o) => ({
           name: o.name.trim(),
-          option_image_index: Number(o.option_image_index),
+          option_image_files: o.option_image_files ?? [],
         }))
         .filter((o) => o.name.length > 0);
 
@@ -114,25 +140,8 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
         }
       }
 
-      for (const o of normalizedOptions) {
-        if (!Number.isInteger(o.option_image_index)) {
-          throw new Error('옵션 이미지 인덱스는 정수여야 합니다.');
-        }
-        if (o.option_image_index < -1) {
-          throw new Error(
-            '옵션 이미지 인덱스는 -1 또는 0 이상의 값이어야 합니다.'
-          );
-        }
-        // UI expects this to refer to optionImages list; validate that range
-        if (o.option_image_index >= 0) {
-          const optCount = optionImages?.length ?? 0;
-          if (o.option_image_index >= optCount) {
-            throw new Error(
-              '옵션 이미지 인덱스가 선택한 옵션 이미지 파일 개수를 초과했습니다.'
-            );
-          }
-        }
-      }
+      // Calculate per-option image index mapping (shared image_files array)
+      let runningOptImageIndex = optionImageBaseIndex;
 
       const payload: CreateEventRequest = {
         title: t,
@@ -141,10 +150,15 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
         end_at: toISO(endAt),
         images: images.length > 0 ? images : undefined,
         options: normalizedOptions.map((o) => {
-          const idx = o.option_image_index;
-          // UI allows -1 for no image, else users reference "option 이미지" file index
-          // which begins after the event images in the shared image_files list.
-          const mapped = idx < 0 ? -1 : optionImageBaseIndex + idx;
+          // If no image for this option, -1. Otherwise map to shared image_files index.
+          const mapped =
+            o.option_image_files.length > 0 ? runningOptImageIndex : -1;
+
+          // Each option can have 0..N images selected, but API supports a single index.
+          // We'll use the first selected image and still upload the rest (harmless).
+          // Advance by the number of files we appended for this option.
+          runningOptImageIndex += o.option_image_files.length;
+
           return { name: o.name, option_image_index: mapped };
         }),
       };
@@ -173,8 +187,7 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
       setStartAt('');
       setEndAt('');
       setEventImages(null);
-      setOptionImages(null);
-      setOptions([{ name: '', option_image_index: -1 }]);
+      setOptions([{ name: '', option_image_files: [] }]);
       onCreated?.(res);
     } catch (err) {
       if (import.meta.env.DEV) {
@@ -209,7 +222,13 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
               className="input"
               type="datetime-local"
               value={startAt}
-              onChange={(e) => setStartAt(e.target.value)}
+              min={minStartLocal}
+              onChange={(e) => {
+                const next = e.target.value;
+                setStartAt(next);
+                // As requested: when start time changes, reset end time selection.
+                setEndAt('');
+              }}
               required
             />
           </div>
@@ -231,6 +250,7 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
               className="input"
               type="datetime-local"
               value={endAt}
+              min={startAt || minStartLocal}
               onChange={(e) => setEndAt(e.target.value)}
               required
             />
@@ -253,20 +273,10 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
             </div>
 
             <div className="form-row">
-              <label htmlFor="opt-images">
-                옵션 이미지 (옵션에서 인덱스로 참조)
-              </label>
-              <input
-                id="opt-images"
-                className="input"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => setOptionImages(e.target.files)}
-              />
+              <label>옵션 이미지</label>
               <p className="page-sub" style={{ margin: 0 }}>
-                아래 옵션의 option_image_index는 여기서 선택한 파일의 0-based
-                인덱스입니다. (없으면 -1)
+                각 옵션 행에서 “이미지 선택”을 눌러 업로드할 이미지를 고르세요.
+                (없으면 이미지 없이 생성됩니다.)
               </p>
             </div>
           </div>
@@ -281,15 +291,38 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
                 onChange={(e) => updateOptionName(idx, e.target.value)}
                 placeholder={`옵션 ${idx + 1}`}
               />
-              <input
-                className="input"
-                value={opt.option_image_index}
-                onChange={(e) =>
-                  updateOptionImageIndex(idx, Number(e.target.value))
-                }
-                placeholder="이미지 인덱스 (-1)"
-                inputMode="numeric"
-              />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <label
+                  className="button"
+                  style={{ margin: 0, cursor: 'pointer' }}
+                >
+                  이미지 선택
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      addOptionImage(idx, e.target.files);
+                      // reset input so selecting same file again triggers change
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                </label>
+                <small className="page-sub" style={{ margin: 0 }}>
+                  {opt.option_image_files.length > 0
+                    ? `${opt.option_image_files.length}개 선택됨`
+                    : '없음'}
+                </small>
+                {opt.option_image_files.length > 0 ? (
+                  <button
+                    type="button"
+                    className="button ghost"
+                    onClick={() => clearOptionImages(idx)}
+                  >
+                    제거
+                  </button>
+                ) : null}
+              </div>
               <button
                 className="button"
                 type="button"

@@ -31,3 +31,6 @@ export const confirmVerificationCode = (code: string) =>
       },
     }
   );
+
+/* 토큰 갱신 (쿠키 refresh_token 사용) */
+export const refresh = () => client.post('/api/auth/refresh');

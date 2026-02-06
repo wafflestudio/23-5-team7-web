@@ -46,9 +46,12 @@ export interface EventSummary {
   description: string;
   status: EventStatus;
   total_participants?: number;
+  created_at?: string;
+  start_at?: string;
   end_at: string; // ISO datetime string
   like_count?: number;
   is_liked?: boolean | null;
+  is_eligible?: boolean;
   options: EventOptionSummary[];
   images?: EventImage[];
 }
@@ -60,10 +63,14 @@ export interface EventDetail {
   description: string;
   status: EventStatus;
   total_participants_count?: number;
+  total_participants?: number;
   like_count?: number;
   is_liked?: boolean | null;
+  is_eligible?: boolean;
   options: EventOptionSummary[];
   images: EventImage[];
+  created_at?: string;
+  start_at?: string;
   end_at: string;
 }
 
@@ -144,6 +151,35 @@ export interface MeBetsResponse {
   bets: MeBet[];
 }
 
+// ===== Step 4-2: Point history =====
+export type PointHistoryReason =
+  | 'SIGNUP'
+  | 'BET'
+  | 'WIN'
+  | 'LOSE'
+  | 'REFUND'
+  | 'ETC'
+  | string;
+
+export interface PointHistoryItem {
+  history_id: UUID;
+  reason: PointHistoryReason;
+  change_amount: number;
+  points_after: number;
+  bet_id: UUID | null;
+  event_id: UUID | null;
+  event_title: string | null;
+  option_id: UUID | null;
+  option_name: string | null;
+  created_at: string;
+}
+
+export interface PointHistoryResponse {
+  current_balance: number;
+  total_count: number;
+  history: PointHistoryItem[];
+}
+
 // (removed unused point-history types)
 
 export interface MeProfile {
@@ -156,6 +192,14 @@ export interface MeProfile {
   is_snu_verified?: boolean;
   social_type?: 'LOCAL' | 'GOOGLE' | 'KAKAO' | string;
   created_at?: string;
+}
+
+// 4-5) GET /api/users/me/ranking
+export interface MeRanking {
+  rank: number;
+  total_users: number;
+  percentile: number;
+  my_points: number;
 }
 
 // ===== Step 7: Comments =====

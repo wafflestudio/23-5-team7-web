@@ -1,23 +1,69 @@
-import { useState } from 'react';
+import { AxiosError } from 'axios';
+import { useMemo, useState } from 'react';
 import { signup } from '../api/auth';
 
-export default function SignupModal() {
+interface Props {
+  onSignupSuccess?: () => void;
+  onNeedVerify?: () => void;
+}
+
+export default function SignupModal({ onSignupSuccess, onNeedVerify }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+
+  const canSubmit = useMemo(() => {
+    if (loading) return false;
+    if (!email.trim()) return false;
+    if (!nickname.trim()) return false;
+    if (!password) return false;
+    // Mirror README constraints (keep it simple)
+    if (nickname.trim().length < 2 || nickname.trim().length > 20) return false;
+    if (password.length < 8 || password.length > 20) return false;
+    // SNU mail only (basic check; backend validates)
+    if (!/@snu\.ac\.kr\s*$/i.test(email.trim())) return false;
+    return true;
+  }, [email, password, nickname, loading]);
 
   const handleSignup = async () => {
+    if (!canSubmit) return;
+    setLoading(true);
+    setError(null);
+    setInfo(null);
     try {
-      await signup({
+      const res = await signup({
         email,
         password,
         nickname,
         social_type: 'LOCAL',
         social_id: null,
       });
-      alert('회원가입 성공. 로그인하세요.');
-    } catch {
-      alert('회원가입 실패');
+      // Store verification token to be used by EmailVerifyModal
+      const token = (res.data as { verification_token?: string })
+        ?.verification_token;
+      if (token) localStorage.setItem('verification_token', token);
+      setInfo('회원가입 완료! 이메일 인증을 진행해주세요.');
+      onSignupSuccess?.();
+      onNeedVerify?.();
+    } catch (e) {
+      const err = e as AxiosError<{ error_code?: string; error_msg?: string }>;
+      const code = err.response?.data?.error_code;
+      if (code === 'ERR_006') {
+        setError('이미 가입된 이메일입니다.');
+      } else if (code === 'ERR_007') {
+        setError('이미 사용 중인 닉네임입니다.');
+      } else if (code === 'ERR_010') {
+        setError('@snu.ac.kr 이메일만 가입할 수 있어요.');
+      } else if (err.response?.data?.error_msg) {
+        setError(err.response.data.error_msg);
+      } else {
+        setError('회원가입에 실패했습니다. 입력값을 확인해주세요.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -67,10 +113,14 @@ export default function SignupModal() {
             className="button primary"
             onClick={handleSignup}
             type="button"
+            disabled={!canSubmit}
           >
-            회원가입
+            {loading ? '가입 중…' : '회원가입'}
           </button>
         </div>
+
+        {error ? <p className="form-error">{error}</p> : null}
+        {info ? <p className="form-info">{info}</p> : null}
       </div>
     </div>
   );

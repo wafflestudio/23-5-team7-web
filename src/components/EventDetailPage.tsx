@@ -5,6 +5,11 @@ import type { OddsMessage } from '../api/ws';
 import { getOddsWsUrl } from '../api/ws';
 import { useIsLoggedIn } from '../auth/session';
 import type { EventDetail, EventStatus } from '../types';
+import {
+  computeTimeLabels,
+  formatDateTimeKo,
+  safeParseDate,
+} from '../utils/time';
 import CommentsSection from './CommentsSection';
 import EventStatusChange from './EventStatusChange';
 import LikeButton from './LikeButton';
@@ -37,6 +42,8 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
   // The event detail API response doesn't currently include created_at in our types.
   // We'll derive a reasonable start time for the tooltip from end_at (minus 24h).
   const [createdAt, setCreatedAt] = useState<string>(''); // ISO (optional)
+  const [startAt, setStartAt] = useState<string>(''); // ISO (optional)
+  const [isEligible, setIsEligible] = useState<boolean | undefined>(undefined);
   const [options, setOptions] = useState<EventDetail['options']>([]);
   const [images, setImages] = useState<EventDetail['images']>([]);
   const [likeCount, setLikeCount] = useState<number>(0);
@@ -54,6 +61,12 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
 
   const formatMoney = (n: number) =>
     new Intl.NumberFormat('ko-KR').format(Math.round(n));
+
+  const formatOdds = (odds: number) => {
+    // Display (floor) to 2 decimal places (내림) as per requirement.
+    const floored = Math.floor(odds * 100) / 100;
+    return floored.toFixed(2);
+  };
 
   const [now, setNow] = useState<Date>(new Date());
 
@@ -100,11 +113,13 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
         setTitle(res.title);
         setStatus(res.status);
         setCloseTime(res.end_at ?? '');
+        setStartAt(res.start_at ?? '');
+        setCreatedAt(res.created_at ?? '');
+        setIsEligible(res.is_eligible);
         setOptions(res.options ?? []);
         setImages(res.images ?? []);
         setLikeCount(res.like_count ?? 0);
         setIsLiked(res.is_liked ?? null);
-        setCreatedAt('');
         setDescription(res.description ?? '');
         setSelectedOptionId(null);
         setBetOpen(false);
@@ -123,6 +138,8 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
         setCloseTime('');
         setStatus('READY');
         setCreatedAt('');
+        setStartAt('');
+        setIsEligible(undefined);
         setOptions([]);
         setImages([]);
         setLikeCount(0);
@@ -140,6 +157,8 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
       alive = false;
     };
   }, [eventId]);
+
+  const canBet = status === 'OPEN';
 
   // When login/logout happens, refetch to update personalized fields like is_liked.
   useEffect(() => {
@@ -338,45 +357,28 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
     ]
   );
 
-  const startIso = useMemo(() => {
-    if (createdAt) return createdAt;
-    if (!closeTime) return '';
-    const end = new Date(closeTime);
-    return new Date(end.getTime() - 24 * 60 * 60 * 1000).toISOString();
-  }, [createdAt, closeTime]);
+  const startIso = useMemo(
+    () => startAt || createdAt || closeTime,
+    [closeTime, createdAt, startAt]
+  );
   const endIso = detail.end_at ?? '';
   const start = useMemo(
-    () => (startIso ? new Date(startIso) : new Date()),
+    () => safeParseDate(startIso) ?? new Date(),
     [startIso]
   );
-  const end = useMemo(() => (endIso ? new Date(endIso) : new Date()), [endIso]);
+  const end = useMemo(() => safeParseDate(endIso) ?? new Date(), [endIso]);
 
   const totalMs = Math.max(0, end.getTime() - start.getTime());
   const elapsedMs = Math.min(
     Math.max(0, now.getTime() - start.getTime()),
     totalMs
   );
-  const remainingMs = Math.max(0, end.getTime() - now.getTime());
   const progress = totalMs === 0 ? 0 : (elapsedMs / totalMs) * 100;
 
-  const remainingLabel = useMemo(() => {
-    if (!endIso) return '-';
-    const totalMinutes = Math.ceil(remainingMs / (60 * 1000));
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    if (hours <= 0) return `${minutes}분 남음`;
-    return `약 ${hours}시간 ${minutes}분 남음`;
-  }, [remainingMs, endIso]);
-
-  const untilStartMs = Math.max(0, start.getTime() - now.getTime());
-  const untilStartLabel = useMemo(() => {
-    if (!startIso) return '-';
-    const totalMinutes = Math.ceil(untilStartMs / (60 * 1000));
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    if (hours <= 0) return `${minutes}분 남음`;
-    return `약 ${hours}시간 ${minutes}분 남음`;
-  }, [untilStartMs, startIso]);
+  const { untilStartLabel, remainingLabel } = useMemo(
+    () => computeTimeLabels({ startIso, endIso, now }),
+    [endIso, now, startIso]
+  );
 
   const statusColors: Record<EventStatus, string> = {
     READY: '#6b7280',
@@ -452,7 +454,9 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
                   className="progress-label"
                   style={{ textAlign: 'center', fontSize: '1.5em' }}
                 >
-                  시작까지 {untilStartLabel}
+                  {isEligible === false
+                    ? '좋아요를 모아 이벤트를 오픈하세요!'
+                    : `시작까지 ${untilStartLabel}`}
                 </div>
               ) : (
                 <>
@@ -483,10 +487,10 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
                     </div>
                     <div className="progress-tooltip">
                       <div>
-                        <strong>시작</strong> {start.toLocaleString('ko-KR')}
+                        <strong>시작</strong> {formatDateTimeKo(startIso)}
                       </div>
                       <div>
-                        <strong>종료</strong> {end.toLocaleString('ko-KR')}
+                        <strong>종료</strong> {formatDateTimeKo(endIso)}
                       </div>
                     </div>
                   </div>
@@ -494,6 +498,17 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
               )}
             </div>
           ) : null}
+
+          {!canBet ? (
+            <p className="page-sub" style={{ marginTop: 10 }}>
+              베팅은 OPEN 상태에서만 가능해요. 또한 베팅은 제출 후 수정할 수
+              없어요.
+            </p>
+          ) : (
+            <p className="page-sub" style={{ marginTop: 10 }}>
+              베팅은 제출 후 수정할 수 없어요.
+            </p>
+          )}
 
           {description ? <p className="event-desc">{description}</p> : null}
 
@@ -633,10 +648,14 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
             </div>
             <button
               className="button primary"
-              disabled={!selectedOptionId}
+              disabled={!canBet || !selectedOptionId}
               onClick={(e) => {
                 e.stopPropagation();
                 setBetError(null);
+                if (!canBet) {
+                  setBetError('베팅은 OPEN 상태에서만 가능합니다.');
+                  return;
+                }
                 setBetOpen(true);
               }}
             >
@@ -716,7 +735,7 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
                     <div className="option-title-row">
                       <div className="option-name">{o.name}</div>
                       {typeof o.odds === 'number' ? (
-                        <div className="odds-pill">{o.odds.toFixed(2)}x</div>
+                        <div className="odds-pill">{formatOdds(o.odds)}x</div>
                       ) : null}
                     </div>
                   </div>
@@ -784,6 +803,9 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
                 <p className="page-sub">
                   베팅은 즉시 반영되며, 성공하면 화면의 배팅 금액/참여자 수를
                   다시 불러옵니다.
+                </p>
+                <p className="page-sub" style={{ marginTop: 6 }}>
+                  베팅은 제출 후 수정할 수 없어요.
                 </p>
               </div>
               <footer
