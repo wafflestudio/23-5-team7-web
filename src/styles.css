@@ -44,6 +44,11 @@ body {
   font-weight: 900;
   cursor: pointer;
   color: #0f172a;
+
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  overflow: hidden;
 }
 
 .app-logo:hover {
