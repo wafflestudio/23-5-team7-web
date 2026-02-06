@@ -17,23 +17,12 @@ export default function GoogleSignupModal({
   socialType,
 }: Props) {
   const [nickname, setNickname] = useState('');
-  const [password, setPassword] = useState('');
-  const [password2, setPassword2] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSignup = async () => {
     if (!nickname.trim()) {
       setError('닉네임을 입력해주세요.');
-      return;
-    }
-
-    if (password.length < 8 || password.length > 20) {
-      setError('비밀번호는 8자 이상 20자 이하여야 합니다.');
-      return;
-    }
-    if (password !== password2) {
-      setError('비밀번호 확인이 일치하지 않습니다.');
       return;
     }
 
@@ -49,7 +38,6 @@ export default function GoogleSignupModal({
       await signup({
         email,
         nickname: nickname.trim(),
-        password,
         social_type: socialType as 'LOCAL' | 'GOOGLE' | 'KAKAO',
         social_id: socialId,
       });
@@ -81,7 +69,7 @@ export default function GoogleSignupModal({
 
       <div className="modal-body">
         <p className="page-sub" style={{ marginTop: 0 }}>
-          구글 계정으로 가입하시려면 닉네임과 비밀번호를 설정해주세요.
+          구글 계정으로 가입하시려면 닉네임을 설정해주세요.
         </p>
 
         <div className="form-row" style={{ marginTop: 16 }}>
@@ -104,32 +92,6 @@ export default function GoogleSignupModal({
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
             autoFocus
-          />
-        </div>
-
-        <div className="form-row">
-          <label htmlFor="google-signup-password">비밀번호</label>
-          <input
-            id="google-signup-password"
-            className="input"
-            placeholder="비밀번호 (8-20자)"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-
-        <div className="form-row">
-          <label htmlFor="google-signup-password2">비밀번호 확인</label>
-          <input
-            id="google-signup-password2"
-            className="input"
-            placeholder="비밀번호 재입력"
-            type="password"
-            autoComplete="new-password"
-            value={password2}
-            onChange={(e) => setPassword2(e.target.value)}
           />
         </div>
 

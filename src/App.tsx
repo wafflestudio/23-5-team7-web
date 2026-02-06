@@ -29,6 +29,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showMypage, setShowMypage] = useState(false);
+  const [showSessionExpired, setShowSessionExpired] = useState(false);
 
   // Google OAuth states
   const [showGoogleCallback, setShowGoogleCallback] = useState(false);
@@ -121,6 +122,24 @@ export default function App() {
     checkAuth();
   }, []);
 
+  useEffect(() => {
+    const onExpired = () => {
+      setIsLoggedIn(false);
+      setUser(null);
+      setShowMypage(false);
+      setShowSessionExpired(true);
+    };
+    window.addEventListener(
+      'snutoto:session-expired',
+      onExpired as EventListener
+    );
+    return () =>
+      window.removeEventListener(
+        'snutoto:session-expired',
+        onExpired as EventListener
+      );
+  }, []);
+
   const handleLoginSuccess = (loggedInUser: User) => {
     setIsLoggedIn(true);
     setUser(loggedInUser);
@@ -154,11 +173,7 @@ export default function App() {
               if (location.hash) location.hash = '';
             }}
           >
-            <img
-              src={logoPng}
-              alt="스누토토"
-              style={{ height: 28, width: 'auto', display: 'block' }}
-            />
+            <img src={logoPng} alt="스누토토" className="app-logo-img" />
           </button>
           <button
             className="button ghost"
@@ -325,6 +340,36 @@ export default function App() {
               setShowLogin(true);
             }}
           />
+        </Modal>
+      )}
+
+      {showSessionExpired && (
+        <Modal onClose={() => setShowSessionExpired(false)}>
+          <div>
+            <div className="modal-header">
+              <h2 style={{ margin: 0 }}>로그인 만료</h2>
+            </div>
+            <div className="modal-body">
+              <p className="page-sub" style={{ marginTop: 0 }}>
+                로그인 세션이 만료되어 로그아웃되었습니다.
+              </p>
+              <p className="page-sub" style={{ marginTop: 0 }}>
+                다시 로그인해 주세요.
+              </p>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={() => {
+                    setShowSessionExpired(false);
+                    setShowLogin(true);
+                  }}
+                >
+                  로그인하기
+                </button>
+              </div>
+            </div>
+          </div>
         </Modal>
       )}
 

@@ -237,6 +237,13 @@ body {
   border-radius: 14px;
   overflow: hidden;
 }
+
+.app-logo-img {
+  display: block;
+  height: 100%;
+  width: auto;
+  object-fit: cover;
+}
 .lightbox-img {
   display: block;
   width: 100%;

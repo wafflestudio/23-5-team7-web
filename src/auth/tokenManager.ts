@@ -23,6 +23,14 @@ function clearLocalSession() {
   notifySessionChanged();
 }
 
+function notifySessionExpired() {
+  window.dispatchEvent(
+    new CustomEvent('snutoto:session-expired', {
+      detail: { reason: 'TOKEN_EXPIRED' },
+    })
+  );
+}
+
 async function maybeRefresh() {
   // Only refresh if we rely on cookies (google) or if access_token exists but may expire.
   if (!hasAnyAuth()) return;
@@ -65,7 +73,9 @@ async function maybeRefresh() {
 
     notifySessionChanged();
   } catch {
-    // If refresh fails, we don't immediately log out; inactivity timer will.
+    // If refresh fails while the user is active, assume the session is no longer valid.
+    clearLocalSession();
+    notifySessionExpired();
   }
 }
 
@@ -91,6 +101,8 @@ export function startTokenManager() {
 
   const onActivity = () => {
     lastActivityAt = Date.now();
+    // If the user is active, keep the session fresh (at most once per minute).
+    void maybeRefresh();
   };
 
   // Treat these as activity signals.
