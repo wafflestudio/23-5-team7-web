@@ -331,10 +331,6 @@ export default function App() {
       {showGoogleCallback && (
         <GoogleCallbackHandler
           onLoginSuccess={handleLoginSuccess}
-          onNeedVerify={() => {
-            setShowGoogleCallback(false);
-            setNeedVerify(true);
-          }}
           onNeedSignup={(data) => {
             setGoogleSignupData(data);
             setShowGoogleCallback(false);
@@ -358,10 +354,6 @@ export default function App() {
             email={googleSignupData.email}
             socialId={googleSignupData.social_id}
             socialType={googleSignupData.social_type}
-            onNeedVerify={() => {
-              setShowGoogleSignup(false);
-              setNeedVerify(true);
-            }}
           />
         </Modal>
       )}

@@ -10,6 +10,7 @@ interface Props {
 export default function SignupModal({ onSignupSuccess, onNeedVerify }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,13 +21,14 @@ export default function SignupModal({ onSignupSuccess, onNeedVerify }: Props) {
     if (!email.trim()) return false;
     if (!nickname.trim()) return false;
     if (!password) return false;
+    if (password !== password2) return false;
     // Mirror README constraints (keep it simple)
     if (nickname.trim().length < 2 || nickname.trim().length > 20) return false;
     if (password.length < 8 || password.length > 20) return false;
     // SNU mail only (basic check; backend validates)
     if (!/@snu\.ac\.kr\s*$/i.test(email.trim())) return false;
     return true;
-  }, [email, password, nickname, loading]);
+  }, [email, password, password2, nickname, loading]);
 
   const handleSignup = async () => {
     if (!canSubmit) return;
@@ -88,18 +90,6 @@ export default function SignupModal({ onSignupSuccess, onNeedVerify }: Props) {
         </div>
 
         <div className="form-row">
-          <label htmlFor="signup-password">비밀번호</label>
-          <input
-            id="signup-password"
-            className="input"
-            placeholder="비밀번호"
-            type="password"
-            autoComplete="new-password"
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-
-        <div className="form-row">
           <label htmlFor="signup-nickname">닉네임</label>
           <input
             id="signup-nickname"
@@ -107,6 +97,30 @@ export default function SignupModal({ onSignupSuccess, onNeedVerify }: Props) {
             placeholder="닉네임"
             autoComplete="nickname"
             onChange={(e) => setNickname(e.target.value)}
+          />
+        </div>
+
+        <div className="form-row">
+          <label htmlFor="signup-password">비밀번호</label>
+          <input
+            id="signup-password"
+            className="input"
+            placeholder="비밀번호 (8-20자)"
+            type="password"
+            autoComplete="new-password"
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+
+        <div className="form-row">
+          <label htmlFor="signup-password2">비밀번호 재입력</label>
+          <input
+            id="signup-password2"
+            className="input"
+            placeholder="비밀번호 재입력"
+            type="password"
+            autoComplete="new-password"
+            onChange={(e) => setPassword2(e.target.value)}
           />
         </div>
 

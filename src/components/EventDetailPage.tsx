@@ -375,7 +375,7 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
   );
   const progress = totalMs === 0 ? 0 : (elapsedMs / totalMs) * 100;
 
-  const { untilStartLabel, remainingLabel } = useMemo(
+  const { untilStartLabel, remainingLabel, untilStartMs } = useMemo(
     () => computeTimeLabels({ startIso, endIso, now }),
     [endIso, now, startIso]
   );
@@ -456,7 +456,9 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
                 >
                   {isEligible === false
                     ? '좋아요를 모아 이벤트를 오픈하세요!'
-                    : `시작까지 ${untilStartLabel}`}
+                    : untilStartMs >= 24 * 60 * 60 * 1000
+                      ? `${untilStartLabel}에 시작`
+                      : `시작까지 ${untilStartLabel}`}
                 </div>
               ) : (
                 <>

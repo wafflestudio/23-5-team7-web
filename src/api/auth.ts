@@ -15,15 +15,7 @@ export const sendVerificationMail = () =>
     {},
     {
       headers: {
-        // Backend expects a short-lived verification token (not access_token).
-        // Prefer a dedicated header; keep Authorization fallback for compatibility.
-        'x-verification-token':
-          localStorage.getItem('verification_token') || '',
-        ...(localStorage.getItem('verification_token')
-          ? {
-              Authorization: `Bearer ${localStorage.getItem('verification_token')}`,
-            }
-          : {}),
+        Authorization: `Bearer ${localStorage.getItem('verification_token')}`,
       },
     }
   );
@@ -35,13 +27,7 @@ export const confirmVerificationCode = (code: string) =>
     { code },
     {
       headers: {
-        'x-verification-token':
-          localStorage.getItem('verification_token') || '',
-        ...(localStorage.getItem('verification_token')
-          ? {
-              Authorization: `Bearer ${localStorage.getItem('verification_token')}`,
-            }
-          : {}),
+        Authorization: `Bearer ${localStorage.getItem('verification_token')}`,
       },
     }
   );
