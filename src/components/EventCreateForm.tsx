@@ -198,18 +198,11 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
         );
       }
 
-      const policyNote =
-        ' ';
-      const mergedDescription = (() => {
-        const base = description?.trim() ?? '';
-        if (!base) return policyNote;
-        if (base.includes('※ 날짜 제한:')) return base;
-        return `${base}\n\n${policyNote}`;
-      })();
+      const finalDescription = description?.trim() || undefined;
 
       const payload: CreateEventRequest = {
         title: t,
-        description: mergedDescription || undefined,
+        description: finalDescription,
         start_at: toISO(startAt),
         end_at: toISO(endAt),
         images: images.length > 0 ? images : undefined,
