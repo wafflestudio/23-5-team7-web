@@ -50,7 +50,7 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
       .slice(0, 16);
   }, [startAt]);
 
-  const fmtLocal = (dtLocal: string) => {
+  const _fmtLocal = (dtLocal: string) => {
     if (!dtLocal) return '';
     // Convert yyyy-mm-ddThh:mm to a readable label in ko-KR.
     try {
