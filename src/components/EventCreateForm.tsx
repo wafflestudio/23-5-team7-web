@@ -45,7 +45,7 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
     if (!startAt) return '';
     const s = new Date(startAt);
     if (Number.isNaN(s.getTime())) return '';
-    return new Date(s.getTime() + 24 * 60 * 60 * 1000)
+    return new Date(s.getTime() + 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 16);
   }, [startAt]);
