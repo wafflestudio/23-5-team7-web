@@ -50,16 +50,16 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
       .slice(0, 16);
   }, [startAt]);
 
-  const _fmtLocal = (dtLocal: string) => {
-    if (!dtLocal) return '';
-    // Convert yyyy-mm-ddThh:mm to a readable label in ko-KR.
-    try {
-      const d = new Date(dtLocal);
-      return d.toLocaleString('ko-KR');
-    } catch {
-      return dtLocal;
-    }
-  };
+  // const _fmtLocal = (dtLocal: string) => {
+  //   if (!dtLocal) return '';
+  //   // Convert yyyy-mm-ddThh:mm to a readable label in ko-KR.
+  //   try {
+  //     const d = new Date(dtLocal);
+  //     return d.toLocaleString('ko-KR');
+  //   } catch {
+  //     return dtLocal;
+  //   }
+  // };
 
   const addOption = () =>
     setOptions((prev) => [...prev, { name: '', option_image_files: [] }]);
