@@ -35,8 +35,8 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
   };
 
   const nowLocal = new Date();
-  // Policy: start can be chosen from 2 days after now.
-  const minStartLocal = new Date(nowLocal.getTime() + 2 * 24 * 60 * 60 * 1000)
+  // Policy: start can be chosen from 1 hour after now.
+  const minStartLocal = new Date(nowLocal.getTime() + 1 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 16);
 
@@ -185,10 +185,10 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
         throw new Error('날짜 형식이 올바르지 않습니다.');
       }
 
-      const minStart = new Date(nowLocal.getTime() + 2 * 24 * 60 * 60 * 1000);
+      const minStart = new Date(nowLocal.getTime() + 1 * 60 * 60 * 1000);
       if (sLocal.getTime() < minStart.getTime()) {
         throw new Error(
-          '시작 시각은 현재 시각 기준 2일 이후부터 선택할 수 있어요.'
+          '시작 시각은 현재 시각 기준 1시간 이후부터 선택할 수 있어요.'
         );
       }
       const minEnd = new Date(sLocal.getTime() + 24 * 60 * 60 * 1000);
@@ -294,8 +294,7 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
               required
             />
             <p className="page-sub" style={{ margin: 0 }}>
-              현재 시각 기준 2일 이후부터 선택할 수 있어요.
-              {minStartLocal ? ` (최소: ${fmtLocal(minStartLocal)})` : ''}
+              현재 시각 기준 1시간 이후부터 선택할 수 있어요.
             </p>
           </div>
           <div className="form-row">
