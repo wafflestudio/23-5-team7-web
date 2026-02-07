@@ -94,7 +94,7 @@ export default function SignupModal({ onSignupSuccess, onNeedVerify }: Props) {
           <input
             id="signup-nickname"
             className="input"
-            placeholder="닉네임"
+            placeholder="닉네임 (2-20자)"
             autoComplete="nickname"
             onChange={(e) => setNickname(e.target.value)}
           />

@@ -140,6 +140,21 @@ export default function App() {
       );
   }, []);
 
+  // Keep header nickname in sync when MyPage updates localStorage user (same-tab).
+  useEffect(() => {
+    const onSession = () => {
+      try {
+        const raw = localStorage.getItem('user');
+        if (raw) setUser(JSON.parse(raw));
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('snutoto:session', onSession as EventListener);
+    return () =>
+      window.removeEventListener('snutoto:session', onSession as EventListener);
+  }, []);
+
   const handleLoginSuccess = (loggedInUser: User) => {
     setIsLoggedIn(true);
     setUser(loggedInUser);

@@ -80,8 +80,11 @@ export default function EmailVerifyModal({
               try {
                 await confirmVerificationCode(code.trim());
                 localStorage.removeItem('verification_token');
-                setInfo('인증이 완료되었습니다. 이제 로그인할 수 있어요.');
-                onSuccess?.();
+                setInfo('인증 완료! 잠시 후 로그인 화면으로 이동합니다.');
+                // Give the user a moment to see the success message.
+                window.setTimeout(() => {
+                  onSuccess?.();
+                }, 650);
               } catch (e) {
                 const err = e as AxiosError<{ error_code?: string }>;
                 if (err.response?.data?.error_code === 'ERR_012') {

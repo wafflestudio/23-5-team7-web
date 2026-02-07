@@ -20,10 +20,35 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  // README 2-1: per-image size limit 5MB
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+  const describeTooLarge = (files: File[]) => {
+    const over = files.filter((f) => f.size > MAX_IMAGE_BYTES);
+    if (over.length === 0) return null;
+    const names = over
+      .slice(0, 3)
+      .map((f) => f.name)
+      .join(', ');
+    const more = over.length > 3 ? ` 외 ${over.length - 3}개` : '';
+    return `이미지 용량이 너무 커요. (개별 5MB 이하) : ${names}${more}`;
+  };
+
   const nowLocal = new Date();
   const minStartLocal = new Date(nowLocal.getTime() + 60_000)
     .toISOString()
     .slice(0, 16);
+
+  const fmtLocal = (dtLocal: string) => {
+    if (!dtLocal) return '';
+    // Convert yyyy-mm-ddThh:mm to a readable label in ko-KR.
+    try {
+      const d = new Date(dtLocal);
+      return d.toLocaleString('ko-KR');
+    } catch {
+      return dtLocal;
+    }
+  };
 
   const addOption = () =>
     setOptions((prev) => [...prev, { name: '', option_image_files: [] }]);
@@ -34,17 +59,13 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
       prev.map((v, i) => (i === idx ? { ...v, name: val } : v))
     );
 
-  const addOptionImage = (idx: number, files: FileList | null) => {
-    if (!files || files.length === 0) return;
+  const setOptionImage = (idx: number, file: File | null) => {
     setOptions((prev) =>
       prev.map((v, i) =>
         i === idx
           ? {
               ...v,
-              option_image_files: [
-                ...v.option_image_files,
-                ...Array.from(files),
-              ],
+              option_image_files: file ? [file] : [],
             }
           : v
       )
@@ -91,11 +112,11 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
       }
 
       const optionImageBaseIndex = imageFiles.length;
-      // Flatten option images in option order (their indices are derived from this order)
+      // Flatten option images in option order.
+      // API supports a single option_image_index per option, so only the first selected image is appended.
       for (const opt of options) {
-        for (const f of opt.option_image_files ?? []) {
-          imageFiles.push(f);
-        }
+        const first = (opt.option_image_files ?? [])[0];
+        if (first) imageFiles.push(first);
       }
 
       // ===== Client-side validation (mirrors README constraints) =====
@@ -151,13 +172,11 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
         images: images.length > 0 ? images : undefined,
         options: normalizedOptions.map((o) => {
           // If no image for this option, -1. Otherwise map to shared image_files index.
-          const mapped =
-            o.option_image_files.length > 0 ? runningOptImageIndex : -1;
+          const hasImage = (o.option_image_files ?? []).length > 0;
+          const mapped = hasImage ? runningOptImageIndex : -1;
 
-          // Each option can have 0..N images selected, but API supports a single index.
-          // We'll use the first selected image and still upload the rest (harmless).
-          // Advance by the number of files we appended for this option.
-          runningOptImageIndex += o.option_image_files.length;
+          // We appended at most 1 file per option above.
+          if (hasImage) runningOptImageIndex += 1;
 
           return { name: o.name, option_image_index: mapped };
         }),
@@ -231,6 +250,10 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
               }}
               required
             />
+            <p className="page-sub" style={{ margin: 0 }}>
+              현재 시각 기준 1분 이후부터 선택할 수 있어요.
+              {minStartLocal ? ` (최소: ${fmtLocal(minStartLocal)})` : ''}
+            </p>
           </div>
           <div className="form-row">
             <label htmlFor="ev-desc">설명</label>
@@ -254,6 +277,9 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
               onChange={(e) => setEndAt(e.target.value)}
               required
             />
+            <p className="page-sub" style={{ margin: 0 }}>
+              시작 시각 이후로만 선택할 수 있어요.
+            </p>
           </div>
 
           <div className="image-input-grid span-2">
@@ -265,18 +291,30 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
                 type="file"
                 accept="image/*"
                 multiple
-                onChange={(e) => setEventImages(e.target.files)}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  const tooLargeMsg = describeTooLarge(files);
+                  if (tooLargeMsg) {
+                    setError(tooLargeMsg);
+                    setEventImages(null);
+                    // reset input so user can reselect
+                    e.currentTarget.value = '';
+                    return;
+                  }
+                  setError(null);
+                  setEventImages(e.target.files);
+                }}
               />
               <p className="page-sub" style={{ margin: 0 }}>
-                선택한 순서대로 image_index가 0부터 부여됩니다.
+                이미지 파일은 개별 5MB 이하만 업로드할 수 있어요.
               </p>
             </div>
 
             <div className="form-row">
               <label>옵션 이미지</label>
               <p className="page-sub" style={{ margin: 0 }}>
-                각 옵션 행에서 “이미지 선택”을 눌러 업로드할 이미지를 고르세요.
-                (없으면 이미지 없이 생성됩니다.)
+                각 옵션마다 이미지는 1장만 선택할 수 있어요. (없으면 이미지 없이
+                생성됩니다.)
               </p>
             </div>
           </div>
@@ -302,16 +340,26 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
                     accept="image/*"
                     style={{ display: 'none' }}
                     onChange={(e) => {
-                      addOptionImage(idx, e.target.files);
+                      const file = e.target.files?.[0] ?? null;
+                      if (file) {
+                        const tooLargeMsg = describeTooLarge([file]);
+                        if (tooLargeMsg) {
+                          setError(tooLargeMsg);
+                          setOptionImage(idx, null);
+                          e.currentTarget.value = '';
+                          return;
+                        }
+                        setError(null);
+                      }
+
+                      setOptionImage(idx, file);
                       // reset input so selecting same file again triggers change
                       e.currentTarget.value = '';
                     }}
                   />
                 </label>
                 <small className="page-sub" style={{ margin: 0 }}>
-                  {opt.option_image_files.length > 0
-                    ? `${opt.option_image_files.length}개 선택됨`
-                    : '없음'}
+                  {opt.option_image_files.length > 0 ? '선택됨' : '없음'}
                 </small>
                 {opt.option_image_files.length > 0 ? (
                   <button

@@ -7,6 +7,7 @@ import {
   updateMyNickname,
   updateMyPassword,
 } from '../api/me';
+import { notifySessionChanged } from '../auth/session';
 import type { MeBet, MeProfile, MeRanking, PointHistoryItem } from '../types';
 import Modal from './Modal';
 
@@ -132,6 +133,9 @@ export default function MyPage({ onBack }: { onBack: () => void }) {
       } catch {
         // ignore storage errors
       }
+
+      // Same-tab notify so header reacts immediately.
+      notifySessionChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : '닉네임 변경 실패');
       return false;
@@ -215,6 +219,12 @@ export default function MyPage({ onBack }: { onBack: () => void }) {
           <h2 className="event-title">{title}</h2>
           {profile ? (
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {!ranking || ranking.total_users === 0 ? (
+                <p className="page-sub" style={{ margin: '6px 0 0' }}>
+                  랭킹은 매 정각에 산정되기 때문에 그 전까지는 유효하지 않은
+                  등수로 표시될 수 있습니다.
+                </p>
+              ) : null}
               <div className="stat" style={{ minWidth: 220 }}>
                 <div className="stat-label">잔여 코인</div>
                 <div className="stat-value">
