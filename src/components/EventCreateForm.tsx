@@ -45,7 +45,7 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
     if (!startAt) return '';
     const s = new Date(startAt);
     if (Number.isNaN(s.getTime())) return '';
-    return new Date(s.getTime() + 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000)
+    return new Date(s.getTime() + 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 16);
   }, [startAt]);
@@ -199,7 +199,7 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
       }
 
       const policyNote =
-        '※ 날짜 제한: 시작 시각은 현재 시각 기준 2일 이후부터, 종료 시각은 시작 시각 기준 1일 이후부터 선택할 수 있습니다.';
+        '';
       const mergedDescription = (() => {
         const base = description?.trim() ?? '';
         if (!base) return policyNote;
