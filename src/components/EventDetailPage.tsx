@@ -48,7 +48,8 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
   const [images, setImages] = useState<EventDetail['images']>([]);
   const [likeCount, setLikeCount] = useState<number>(0);
   const [isLiked, setIsLiked] = useState<boolean | null>(null);
-  useIsLoggedIn();
+  const isLoggedIn = useIsLoggedIn();
+  const [myTotalBetAmount, setMyTotalBetAmount] = useState<number>(0);
 
   const totalBetAmount = useMemo(() => {
     return options.reduce((acc, o) => acc + (o.option_total_amount ?? 0), 0);
@@ -120,6 +121,7 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
         setImages(res.images ?? []);
         setLikeCount(res.like_count ?? 0);
         setIsLiked(res.is_liked ?? null);
+        setMyTotalBetAmount(res.my_total_bet_amount ?? 0);
         setDescription(res.description ?? '');
         setSelectedOptionId(null);
         setBetOpen(false);
@@ -144,6 +146,7 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
         setImages([]);
         setLikeCount(0);
         setIsLiked(null);
+        setMyTotalBetAmount(0);
         setSelectedOptionId(null);
         setBetOpen(false);
         setBetAmount('');
@@ -158,7 +161,7 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
     };
   }, [eventId]);
 
-  const canBet = status === 'OPEN';
+  const canBet = status === 'OPEN' && isLoggedIn && myTotalBetAmount <= 0;
 
   // When login/logout happens, refetch to update personalized fields like is_liked.
   useEffect(() => {
@@ -170,6 +173,7 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
         if (!alive) return;
         setLikeCount(res.like_count ?? 0);
         setIsLiked(res.is_liked ?? null);
+        setMyTotalBetAmount(res.my_total_bet_amount ?? 0);
       } catch {
         // Non-fatal
       }
@@ -317,6 +321,7 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
     setDescription(res.description ?? '');
     setLikeCount(res.like_count ?? 0);
     setIsLiked(res.is_liked ?? null);
+    setMyTotalBetAmount(res.my_total_bet_amount ?? 0);
   };
   const normalizePointInput = (raw: string) => {
     // Keep digits only (so users can paste with commas)
@@ -501,17 +506,6 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
             </div>
           ) : null}
 
-          {!canBet ? (
-            <p className="page-sub" style={{ marginTop: 10 }}>
-              베팅은 OPEN 상태에서만 가능해요. 또한 베팅은 제출 후 수정할 수
-              없어요.
-            </p>
-          ) : (
-            <p className="page-sub" style={{ marginTop: 10 }}>
-              베팅은 제출 후 수정할 수 없어요.
-            </p>
-          )}
-
           {description ? <p className="event-desc">{description}</p> : null}
 
           <div className="event-stats">
@@ -644,8 +638,23 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
                 <>
                   선택됨: <strong>{selectedOption.name}</strong>
                 </>
+              ) : status !== 'OPEN' ? (
+                <p className="page-sub" style={{ marginTop: 10 }}>
+                  OPEN이 아니어서 배팅할 수 없어요.
+                </p>
+              ) : !isLoggedIn ? (
+                <p className="page-sub" style={{ marginTop: 10 }}>
+                  로그인 후 베팅할 수 있어요.
+                </p>
+              ) : myTotalBetAmount > 0 ? (
+                <p className="page-sub" style={{ marginTop: 10 }}>
+                  이미 이 이벤트에 베팅했어요. (추가 베팅 불가)
+                </p>
               ) : (
-                '옵션을 선택하면 베팅할 수 있어요'
+                <p className="page-sub" style={{ marginTop: 10 }}>
+                  옵션을 선택 후 배팅하기 버튼을 누르세요. 베팅은 제출 후 수정할
+                  수 없어요.
+                </p>
               )}
             </div>
             <button
@@ -655,6 +664,18 @@ const EventDetailPage = ({ eventId, onBack }: Props) => {
                 e.stopPropagation();
                 setBetError(null);
                 if (!canBet) {
+                  if (!isLoggedIn) {
+                    setBetError('로그인 후 베팅할 수 있어요.');
+                    return;
+                  }
+
+                  if (myTotalBetAmount > 0) {
+                    setBetError(
+                      '이미 이 이벤트에 베팅했어요. (추가 베팅 불가)'
+                    );
+                    return;
+                  }
+
                   setBetError('베팅은 OPEN 상태에서만 가능합니다.');
                   return;
                 }

@@ -64,6 +64,8 @@ export interface EventDetail {
   status: EventStatus;
   total_participants_count?: number;
   total_participants?: number;
+  // Total amount the current user has bet on this event (personalized; may be omitted when not logged in)
+  my_total_bet_amount?: number;
   like_count?: number;
   is_liked?: boolean | null;
   is_eligible?: boolean;
