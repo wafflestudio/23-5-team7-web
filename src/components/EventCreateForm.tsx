@@ -199,7 +199,7 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
       }
 
       const policyNote =
-        '';
+        ' ';
       const mergedDescription = (() => {
         const base = description?.trim() ?? '';
         if (!base) return policyNote;
