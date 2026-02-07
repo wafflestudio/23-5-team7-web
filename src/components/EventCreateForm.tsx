@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { createEvent } from '../api/events';
 import type { CreateEventRequest, CreateEventResponse } from '../types';
 
@@ -35,9 +35,20 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
   };
 
   const nowLocal = new Date();
-  const minStartLocal = new Date(nowLocal.getTime() + 60_000)
+  // Policy: start can be chosen from 2 days after now.
+  const minStartLocal = new Date(nowLocal.getTime() + 2 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 16);
+
+  // Policy: end can be chosen from 1 day after start.
+  const minEndLocal = useMemo(() => {
+    if (!startAt) return '';
+    const s = new Date(startAt);
+    if (Number.isNaN(s.getTime())) return '';
+    return new Date(s.getTime() + 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 16);
+  }, [startAt]);
 
   const fmtLocal = (dtLocal: string) => {
     if (!dtLocal) return '';
@@ -164,9 +175,41 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
       // Calculate per-option image index mapping (shared image_files array)
       let runningOptImageIndex = optionImageBaseIndex;
 
+      // ===== Date validation per policy =====
+      if (!startAt || !endAt) {
+        throw new Error('시작 시각과 종료 시각을 입력해주세요.');
+      }
+      const sLocal = new Date(startAt);
+      const eLocal = new Date(endAt);
+      if (Number.isNaN(sLocal.getTime()) || Number.isNaN(eLocal.getTime())) {
+        throw new Error('날짜 형식이 올바르지 않습니다.');
+      }
+
+      const minStart = new Date(nowLocal.getTime() + 2 * 24 * 60 * 60 * 1000);
+      if (sLocal.getTime() < minStart.getTime()) {
+        throw new Error(
+          '시작 시각은 현재 시각 기준 2일 이후부터 선택할 수 있어요.'
+        );
+      }
+      const minEnd = new Date(sLocal.getTime() + 24 * 60 * 60 * 1000);
+      if (eLocal.getTime() < minEnd.getTime()) {
+        throw new Error(
+          '종료 시각은 시작 시각 기준 1일 이후로만 선택할 수 있어요.'
+        );
+      }
+
+      const policyNote =
+        '※ 날짜 제한: 시작 시각은 현재 시각 기준 2일 이후부터, 종료 시각은 시작 시각 기준 1일 이후부터 선택할 수 있습니다.';
+      const mergedDescription = (() => {
+        const base = description?.trim() ?? '';
+        if (!base) return policyNote;
+        if (base.includes('※ 날짜 제한:')) return base;
+        return `${base}\n\n${policyNote}`;
+      })();
+
       const payload: CreateEventRequest = {
         title: t,
-        description: description || undefined,
+        description: mergedDescription || undefined,
         start_at: toISO(startAt),
         end_at: toISO(endAt),
         images: images.length > 0 ? images : undefined,
@@ -251,7 +294,7 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
               required
             />
             <p className="page-sub" style={{ margin: 0 }}>
-              현재 시각 기준 1분 이후부터 선택할 수 있어요.
+              현재 시각 기준 2일 이후부터 선택할 수 있어요.
               {minStartLocal ? ` (최소: ${fmtLocal(minStartLocal)})` : ''}
             </p>
           </div>
@@ -273,12 +316,12 @@ const EventCreateForm = ({ onCreated, onCancel }: Props) => {
               className="input"
               type="datetime-local"
               value={endAt}
-              min={startAt || minStartLocal}
+              min={minEndLocal || startAt || minStartLocal}
               onChange={(e) => setEndAt(e.target.value)}
               required
             />
             <p className="page-sub" style={{ margin: 0 }}>
-              시작 시각 이후로만 선택할 수 있어요.
+              시작 시각 기준 1일 이후로만 선택할 수 있어요.
             </p>
           </div>
 
